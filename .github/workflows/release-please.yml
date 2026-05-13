@@ -1,10 +1,9 @@
 name: Release Please
 
 # Runs on every push to main. Creates or updates a Release PR that:
-#   - bumps the version in .release-please-manifest.json and version.txt
+#   - bumps the version in .release-please-manifest.json
 #   - prepends a new section to CHANGELOG.md
-# When the Release PR is merged, creates a git tag (e.g. v1.1.0).
-# The existing release.yml then picks up the tag and creates the GitHub Release.
+# When the Release PR is merged, creates a git tag and GitHub Release.
 #
 # Version bump rules (Conventional Commits):
 #   feat:              minor bump  (1.0.0 → 1.1.0)
@@ -38,6 +37,3 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
-          # GitHub Release creation is handled by release.yml (v* tag trigger).
-          # This action only creates the Release PR and the git tag.
-          skip-github-release: "true"
