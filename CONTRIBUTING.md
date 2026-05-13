@@ -86,26 +86,60 @@ description: >
 
 Translations are very welcome and are labeled `good first issue`.
 
-### Supported languages
+### Language tiers
 
-| Code | Language |
-|------|----------|
-| `en` | English (default — canonical source, do not submit translation PRs for this) |
-| `ja` | Japanese |
-| `ko` | Korean |
-| `zh` | Chinese (Simplified) |
-| `es` | Spanish |
+Languages are organized into two tiers. The tier list is the single source of truth in [`translations.json`](translations.json).
 
-### How to add a translation
+| Tier | Languages | How maintained |
+|------|-----------|---------------|
+| **Tier 1** | `en` (canonical), `ja`, `ko` | Manually written and reviewed |
+| **Tier 2** | `es`, `zh` | AI-generated via `scripts/translate.sh`, community review welcome |
+
+Tier 2 files include an auto-generation notice at the top:
+
+```html
+<!-- AUTO-GENERATED: This file was translated by Claude AI from README.en.md.
+     Community review and corrections are welcome.
+     Source: README.en.md | Language: Spanish -->
+```
+
+### How to add a Tier 1 translation
 
 1. Find a `README.md` that has not yet been translated into your language
 2. Create `README.<lang>.md` in the same directory
 3. Translate the full content from `README.md`
 4. Submit a PR with the label `i18n:<lang>`
 
+### How to regenerate Tier 2 translations
+
+Tier 2 files (es, zh) can be regenerated automatically using `scripts/translate.sh`.
+
+**Requirements**: `ANTHROPIC_API_KEY`, `jq`, `curl`
+
+```bash
+# Regenerate all Tier 2 translations
+ANTHROPIC_API_KEY=sk-... bash scripts/translate.sh
+
+# Regenerate a single language
+ANTHROPIC_API_KEY=sk-... bash scripts/translate.sh --lang es
+
+# Regenerate a single skill
+ANTHROPIC_API_KEY=sk-... bash scripts/translate.sh --skill ywc-plan
+
+# Preview what would be generated (no API calls)
+bash scripts/translate.sh --dry-run
+```
+
+### How to add a new language
+
+1. Add the language code to `translations.json` under `tier1.codes` (manual) or `tier2.codes` (AI-generated) and to the `all` array
+2. For Tier 1: create `README.<lang>.md` files manually
+3. For Tier 2: run `bash scripts/translate.sh --lang <code>`
+4. Update the tier table above in this file
+
 ### Translation sync
 
-When an English source (`README.md`) changes, CI will post an informational warning on PRs that update English without also updating translations. You are not required to update all languages in a single PR — the warning is informational only.
+When an English source (`README.md`) changes, CI posts an informational warning on PRs that update English without also updating translations. The comment distinguishes Tier 1 (manual update recommended) from Tier 2 (run the script). You are not required to update all languages in a single PR — the warning is informational only.
 
 ---
 
