@@ -142,12 +142,52 @@ ywc-commit → ywc-create-pr → ywc-handle-pr-reviews
 
 ---
 
-## Hooks (coming soon)
+## Claude Code Hooks
 
-`claude-code/hooks/` and `codex/hooks/` will contain automation hooks:
+Automation hooks that run before/after Claude Code tool calls. Hooks are installed
+to `~/.claude/hooks/` (global) or `./.claude/hooks/` (project-local) and registered
+in `settings.json` automatically.
 
-- `PostToolUse` — auto format/lint after file edits
-- `Stop` — build verification at session end
+### Install hooks
+
+```bash
+# Install all hooks globally (default)
+bash scripts/install.sh --hooks
+
+# Install all hooks into the current project
+bash scripts/install.sh --hooks --local
+
+# Install specific hooks only
+bash scripts/install.sh --hooks block-dangerous-commands cost-tracker
+bash scripts/install.sh --hooks --local session-start
+```
+
+### List available hooks
+
+```bash
+bash scripts/install.sh --list --hooks
+```
+
+### Available hooks
+
+| Hook | Event | Description |
+|------|-------|-------------|
+| `block-dangerous-commands` | `PreToolUse` | Block dangerous shell commands (critical/high/strict levels) |
+| `check-claude-md-freshness` | `PreToolUse` | Verify CLAUDE.md is up to date before `git push` |
+| `cost-tracker` | `PostToolUse` + `Stop` | Log tool call stats and print session summary on exit |
+| `notify-permission` | `Notification` | Send a Slack alert when Claude is waiting for permission (`CCH_SLA_WEBHOOK` required) |
+| `permission-request` | `PermissionRequest` | Auto-approve safe tools (Read, Write, Edit) |
+| `protect-secrets` | `PreToolUse` | Block access to `.env`, SSH keys, and other secret files |
+| `session-start` | `SessionStart` | Inject git status, `CONTEXT.md`, TODOs, and GitHub Issues at session start |
+
+### Dependencies
+
+| Dependency | Required | Install |
+|-----------|----------|---------|
+| `jq` | Yes — JSON merge | `brew install jq` / `apt-get install jq` |
+| `uv` | Yes — run Python hooks | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+
+For per-hook usage details see [`claude-code/hooks/README.md`](claude-code/hooks/README.md).
 
 ---
 
