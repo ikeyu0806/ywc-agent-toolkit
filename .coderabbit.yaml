@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: ko
+
+reviews:
+  request_changes_workflow: true
+  high_level_summary: true
+  review_status: true
+  review_details: true
+
+  path_instructions:
+    - path: "claude-code/skills/*/SKILL.md"
+      instructions: |
+        Focus on skill activation quality and repository conventions.
+        - `name:` and `description:` frontmatter must exist.
+        - `description:` should contain concrete trigger phrases and explicit anti-triggers.
+        - Flag `@skill-name` style force-load references.
+        - Flag cases where long reference material should move to `references/`.
+
+    - path: "claude-code/skills/*/README*.md"
+      instructions: |
+        Check that README examples and wording still match the corresponding `SKILL.md`.
+        If the English README changes materially, call out likely translation follow-up for `README.ja.md`, `README.ko.md`, `README.es.md`, and `README.zh.md`.
+
+    - path: "codex/skills/SKILL.md"
+      instructions: |
+        Remember that `codex/skills/SKILL.md` is a single flat bundle in this repository.
+        Flag any suggestion that incorrectly assumes one directory per Codex skill.
+
+    - path: "scripts/*.sh"
+      instructions: |
+        Prioritize shell safety and behavior correctness.
+        - Check quoting, path handling, and error handling.
+        - Verify `install.sh` and `validate.sh` behavior stays consistent with README and CI usage.
+
+    - path: ".github/workflows/*.yml"
+      instructions: |
+        Verify workflow commands, script paths, and globs against the current repository structure.
+        Flag CI and docs mismatches and references to nonexistent files.
+
+    - path: ".claude/**"
+      instructions: |
+        Check whether hook behavior still matches the documented contributor workflow and freshness expectations.
+
+  auto_review:
+    enabled: true
+    drafts: true
+    labels:
+      - "!do-not-review"
+    ignore_title_keywords:
+      - "[skip review]"
