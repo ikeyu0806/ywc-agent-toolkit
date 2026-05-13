@@ -1,0 +1,13 @@
+{
+  "languages": {
+    "tier1": {
+      "description": "Manually maintained and reviewed. High quality guaranteed.",
+      "codes": ["en", "ja", "ko"]
+    },
+    "tier2": {
+      "description": "AI-generated (Claude API). Community review welcome.",
+      "codes": ["es", "zh"]
+    }
+  },
+  "all": ["en", "ja", "ko", "es", "zh"]
+}

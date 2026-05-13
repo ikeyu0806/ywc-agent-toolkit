@@ -24,6 +24,12 @@ jobs:
         with:
           script: |
             const { execSync } = require('child_process');
+            const fs = require('fs');
+
+            // Read language list from translations.json (single source of truth)
+            const translationsConfig = JSON.parse(fs.readFileSync('translations.json', 'utf8'));
+            const tier1Langs = translationsConfig.languages.tier1.codes.filter(l => l !== 'en');
+            const tier2Langs = translationsConfig.languages.tier2.codes;
 
             const base = context.payload.pull_request.base.sha;
             const head = context.payload.pull_request.head.sha;
@@ -37,33 +43,54 @@ jobs:
 
             if (englishReadmes.length === 0) return;
 
-            const langs = ['ja', 'ko', 'zh', 'es'];
-            const warnings = [];
+            const tier1Warnings = [];
+            const tier2Warnings = [];
 
             for (const readme of englishReadmes) {
-              const base = readme.replace(/README\.md$/, '');
-              for (const lang of langs) {
-                const translated = `${base}README.${lang}.md`;
+              const dir = readme.replace(/README\.md$/, '');
+              for (const lang of tier1Langs) {
+                const translated = `${dir}README.${lang}.md`;
                 if (!changedFiles.includes(translated)) {
-                  warnings.push(`- \`${readme}\` was updated but \`${translated}\` was not`);
+                  tier1Warnings.push(`- \`${readme}\` → \`${translated}\` (Tier 1 — manual update recommended)`);
+                }
+              }
+              for (const lang of tier2Langs) {
+                const translated = `${dir}README.${lang}.md`;
+                if (!changedFiles.includes(translated)) {
+                  tier2Warnings.push(`- \`${readme}\` → \`${translated}\` (Tier 2 — run \`bash scripts/translate.sh --lang ${lang}\`)`);
                 }
               }
             }
 
-            if (warnings.length === 0) return;
+            if (tier1Warnings.length === 0 && tier2Warnings.length === 0) return;
+
+            const body = [
+              '## Translation Check',
+              '',
+              'The following translation files may need updating:',
+              '',
+            ];
+
+            if (tier1Warnings.length > 0) {
+              body.push('### Tier 1 — Manually maintained (ja, ko)');
+              body.push('');
+              body.push(...tier1Warnings);
+              body.push('');
+            }
+
+            if (tier2Warnings.length > 0) {
+              body.push('### Tier 2 — AI-generated (es, zh)');
+              body.push('');
+              body.push(...tier2Warnings);
+              body.push('');
+            }
+
+            body.push('This warning is informational only — it does not block merging.');
+            body.push('See [CONTRIBUTING.md](CONTRIBUTING.md#translations) for the translation guide.');
 
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: [
-                '## Translation Check',
-                '',
-                'The following translation files may need updating:',
-                '',
-                ...warnings,
-                '',
-                'If translation updates are not needed for this PR, you can ignore this warning.',
-                'See [CONTRIBUTING.md](CONTRIBUTING.md#translations) for the translation guide.'
-              ].join('\n')
+              body: body.join('\n')
             });

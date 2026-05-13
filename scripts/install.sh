@@ -71,7 +71,7 @@ install_skill() {
   local name
   name="$(basename "$src_dir")"
   is_skill_dir "$src_dir" || return 0
-  rm -rf "$dest_dir/$name"
+  rm -rf "${dest_dir:?}/$name"
   cp -R "$src_dir" "$dest_dir/$name"
   echo "  ✓ $name"
 }
