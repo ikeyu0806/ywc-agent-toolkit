@@ -21,6 +21,8 @@
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(chmod:*)",
+      "Bash(bash:*)",
+      "Bash(sh:*)",
       "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(uv:*)",
@@ -81,7 +83,10 @@
       "Bash(rm -rf .)",
       "Bash(rm -rf ./)",
       "Bash(rm -rf *)",
-      "Bash(sudo rm:*)",
+      "Bash(rm -fr:*)",
+      "Bash(rm -r -f:*)",
+      "Bash(rm -f -r:*)",
+      "Bash(rm --recursive:*)",
       "Bash(chmod 777:*)",
       "Bash(sudo:*)",
       "Bash(mkfs:*)",
@@ -93,8 +98,12 @@
       "Bash(cat .env)",
       "Bash(cat .env:*)",
       "Bash(less .env)",
+      "Bash(head .env)",
       "Bash(head .env:*)",
-      "Bash(tail .env:*)"
+      "Bash(tail .env)",
+      "Bash(tail .env:*)",
+      "Bash(grep .env:*)",
+      "Bash(rg .env:*)"
     ]
   },
   "hooks": {
