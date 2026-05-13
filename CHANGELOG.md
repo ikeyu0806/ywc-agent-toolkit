@@ -1,10 +1,27 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
 ## [1.0.0] - 2026-05-13
 
 ### Added
-- Claude Code 스킬 26종 초기 릴리스 (`claude-code/skills/`)
-- Codex 스킬 31종 초기 릴리스 (`codex/skills/`) — ywc-* 계열 + 범용 스킬 포함
-- 통합 인스톨러 `scripts/install.sh` (`--cc` / `--codex` / `--all` 플래그)
-- Claude Code 플러그인 매니페스트 `plugin.json`
-- `claude-code/hooks/` 및 `codex/hooks/` 디렉토리 (향후 hooks 추가 예정)
+- 26 `ywc-*` Claude Code skills under `claude-code/skills/` covering planning, spec writing, code generation, review, testing, CI, release, and incident management
+- 1 Codex skill (`ywc-ui-ux-review`) under `codex/skills/` with full reference assets
+- Unified installer `scripts/install.sh` with `--cc`, `--codex`, `--all`, and `--list` flags
+- Local validation script `scripts/validate.sh` mirroring CI checks
+- Multilingual README support (en / ja / ko / es / zh) for all skills via tiered translation system
+- `translations.json` configuration for language tier management (manual: en/ja/ko, AI-generated: es/zh)
+- CI workflows: skill validation, markdownlint, translation-check, and automated GitHub Release on `v*` tags
+- `claude-code/hooks/` and `codex/hooks/` directories for future hook extensions
+
+### Fixed
+- Codex skill validation in CI now treats `codex/skills/` as a single bundle, not per-subdirectory (#1)
+- Added missing frontmatter checks and local `validate.sh` to mirror CI (#1)
+- Resolved ShellCheck SC2115 warning and markdownlint configuration in CI
+
+### Removed
+- Non-`ywc-*` reference files, prompts, and scripts from `codex/skills/` that were unrelated to any `ywc-*` skill (#2)
+  - 20 orphaned reference files (e.g., `backend-generation.md`, `automated-pr-review-loop.md`)
+  - `prompts/implementer-base.md` (non-ywc code generation prompt)
+  - `scripts/` directory (9 PR automation scripts)
