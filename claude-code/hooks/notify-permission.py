@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import urllib.request
+from urllib.parse import urlparse
 from datetime import datetime
 from pathlib import Path
 
@@ -77,6 +78,9 @@ def get_title(ntype: str, message: str) -> str:
 def send_slack(data: dict, ntype: str) -> dict:
     if not SLACK_WEBHOOK:
         return {"channel": "slack", "sent": False, "reason": "no webhook"}
+    parsed = urlparse(SLACK_WEBHOOK)
+    if parsed.scheme != "https":
+        return {"channel": "slack", "sent": False, "error": "invalid webhook scheme"}
 
     message = data.get("message") or ""
     short_msg = (message[:200] + "...") if len(message) > 200 else (message or "_No details provided_")
@@ -102,7 +106,7 @@ def send_slack(data: dict, ntype: str) -> dict:
             {
                 "type": "context",
                 "elements": [
-                    {"type": "mrkdwn", "text": f"📁 `{data.get('cwd', 'unknown')}`"},
+                    {"type": "mrkdwn", "text": f"📁 `{get_project_name(data.get('cwd'))}`"},
                     {"type": "mrkdwn", "text": f"🕐 {datetime.now().strftime('%H:%M:%S')}"},
                 ],
             },
