@@ -46,7 +46,7 @@ PATTERNS: list[Pattern] = [
     Pattern("critical", "fork-bomb",        re.compile(r':\(\)\s*\{.*:\s*\|\s*:.*&'),                                              "fork bomb detected"),
     # HIGH — significant risk, data loss, security
     Pattern("high", "curl-pipe-sh",         re.compile(r'\b(curl|wget)\b.+\|\s*(ba)?sh\b'),                                        "piping URL to shell (RCE risk)"),
-    Pattern("high", "git-force-main",       re.compile(r'\bgit\s+push\b(?!.+--force-with-lease).+(--force|-f)\b.+\b(main|master)\b'), "force push to main/master"),
+    Pattern("high", "git-force-main",       re.compile(r'\bgit\s+push\b(?!.+--force-with-lease)(?=.+(--force|-f)\b)(?=.+\b(main|master)\b)'), "force push to main/master"),
     Pattern("high", "git-reset-hard",       re.compile(r'\bgit\s+reset\s+--hard'),                                                 "git reset --hard loses uncommitted work"),
     Pattern("high", "git-clean-f",          re.compile(r'\bgit\s+clean\s+(-\w*f|-f)'),                                             "git clean -f deletes untracked files"),
     Pattern("high", "chmod-777",            re.compile(r'\bchmod\b.+\b777\b'),                                                     "chmod 777 is a security risk"),
