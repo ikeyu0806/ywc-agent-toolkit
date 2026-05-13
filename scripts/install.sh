@@ -217,6 +217,7 @@ merge_hook_settings() {
   #   2. no .hooks[$event]      → create the event array
   #   3. no matching matcher    → append new matcher group
   #   4. matcher exists         → append command only if not already present
+  # shellcheck disable=SC2016  # $event/$matcher/$cmd are jq --arg variables, not bash
   local filter='
     .hooks //= {} |
     .hooks[$event] //= [] |
