@@ -236,7 +236,7 @@ merge_hook_settings() {
   '
 
   local tmp
-  tmp="$(mktemp)"
+  tmp="$(mktemp "$(dirname "$settings_file")/.settings.json.tmp.XXXXXX")"
   if jq --arg event "$event" --arg matcher "$matcher" --arg cmd "$command" \
         "$filter" "$settings_file" > "$tmp" \
       && jq empty "$tmp" 2>/dev/null; then
@@ -267,10 +267,11 @@ run_hook_install() {
     echo "  설치: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
   fi
 
-  local dest_hooks settings manifest cmd_key
+  local dest_hooks settings manifest cmd_key claude_home
+  claude_home="$(dirname "$CC_DEST")"
   if [ "$scope" = "global" ]; then
-    dest_hooks="$HOME/.claude/hooks"
-    settings="$HOME/.claude/settings.json"
+    dest_hooks="$claude_home/hooks"
+    settings="$claude_home/settings.json"
     manifest="$dest_hooks/.ywc-agent-toolkit-hooks.manifest"
     cmd_key="command_global"
   else
@@ -387,6 +388,26 @@ run_hook_install() {
             rm "$orphan_file"
             echo "    ✗ $orphan"
           fi
+          # Remove the command entry from settings.json to prevent stale hook invocations
+          if [ -f "$settings" ] && [ -n "$orphan_cmd" ]; then
+            local stmp
+            stmp="$(mktemp "$(dirname "$settings")/.settings.json.tmp.XXXXXX")"
+            # shellcheck disable=SC2016
+            if jq --arg cmd "$orphan_cmd" \
+                '.hooks //= {} |
+                 .hooks |= with_entries(
+                   .value |= (
+                     map(.hooks |= map(select(.command != $cmd)))
+                     | map(select((.hooks | length) > 0))
+                   )
+                   | select(length > 0)
+                 )' \
+                "$settings" > "$stmp" && jq empty "$stmp" 2>/dev/null; then
+              mv "$stmp" "$settings"
+            else
+              rm -f "$stmp"
+            fi
+          fi
         done <<< "$orphans"
       fi
     fi
@@ -477,6 +498,10 @@ while [ "$#" -gt 0 ]; do
     --list)
       shift
       if [ "${1:-}" = "--hooks" ]; then
+        if ! command -v jq >/dev/null 2>&1; then
+          echo "Error: jq가 필요합니다." >&2
+          exit 1
+        fi
         echo "=== Hooks ==="
         jq -r '.hooks | to_entries[] | "  \(.key)\t\(.value.description)"' "$HOOKS_REGISTRY"
       elif [ "${1:-}" = "--cc" ]; then
