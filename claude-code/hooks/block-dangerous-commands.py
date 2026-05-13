@@ -35,8 +35,8 @@ class Pattern:
 
 PATTERNS: list[Pattern] = [
     # CRITICAL — catastrophic, unrecoverable
-    Pattern("critical", "rm-home",          re.compile(r'\brm\s+(-.+\s+)*["\']?~\/?["\']?(\s|$|[;&|])'),                           "rm targeting home directory"),
-    Pattern("critical", "rm-home-var",      re.compile(r'\brm\s+(-.+\s+)*["\']?\$HOME["\']?(\s|$|[;&|])'),                         "rm targeting $HOME"),
+    Pattern("critical", "rm-home",          re.compile(r'\brm\s+(?:-\S+\s+)*["\']?~(?:\/[^;&|]*)?["\']?(?:\s|$|[;&|])'),          "rm targeting home directory"),
+    Pattern("critical", "rm-home-var",      re.compile(r'\brm\s+(?:-\S+\s+)*["\']?\$HOME(?:\/[^;&|]*)?["\']?(?:\s|$|[;&|])'),     "rm targeting $HOME"),
     Pattern("critical", "rm-home-trailing", re.compile(r'\brm\s+.+\s+["\']?(~\/?|\$HOME)["\']?(\s*$|[;&|])'),                      "rm with trailing ~/ or $HOME"),
     Pattern("critical", "rm-root",          re.compile(r'\brm\s+(-.+\s+)*\/(\*|\s|$|[;&|])'),                                      "rm targeting root filesystem"),
     Pattern("critical", "rm-system",        re.compile(r'\brm\s+(-.+\s+)*\/(etc|usr|var|bin|sbin|lib|boot|dev|proc|sys)(\/|\s|$)'), "rm targeting system directory"),
