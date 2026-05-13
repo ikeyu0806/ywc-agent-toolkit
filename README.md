@@ -9,7 +9,7 @@ A collection of skills for **Claude Code** and **Codex** that automates the full
 | Tool | Skills | Install path |
 |------|--------|-------------|
 | Claude Code | 26 | `~/.claude/skills/` |
-| Codex | 31 | `~/.codex/skills/` |
+| Codex | 1 | `~/.codex/skills/` |
 
 ## Installation
 
@@ -33,7 +33,7 @@ bash scripts/install.sh --all
 
 ```bash
 bash scripts/install.sh --cc ywc-plan ywc-commit ywc-create-pr
-bash scripts/install.sh --codex ywc-plan ywc-task-generator
+bash scripts/install.sh --codex ywc-ui-ux-review
 ```
 
 ### List available skills
@@ -112,15 +112,9 @@ Restart Claude Code or Codex after installation for skills to take effect.
 
 ## Codex Skills
 
-Includes all `ywc-*` skills above plus:
-
 | Skill | Description |
 |-------|-------------|
-| `deep-research-software` | In-depth software research |
-| `frontend-react-typescript` | React + TypeScript frontend development |
-| `monorepo-navigator` | Navigate and work within monorepos |
-| `webapp-saas-system-design` | SaaS web application system design |
-| `ywc-team-assemble` | Assemble a multi-agent team |
+| `ywc-ui-ux-review` | UI/UX review (IA + Visual design + WCAG 2.2 AA) |
 
 ---
 
