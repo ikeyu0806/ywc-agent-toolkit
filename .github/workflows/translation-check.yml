@@ -1,0 +1,69 @@
+name: Translation Check
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'claude-code/skills/*/README.md'
+      - 'codex/skills/*/README.md'
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check-translations:
+    name: Check translation sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect untranslated changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            const base = context.payload.pull_request.base.sha;
+            const head = context.payload.pull_request.head.sha;
+            const changedFiles = execSync(`git diff --name-only ${base} ${head}`)
+              .toString().trim().split('\n').filter(Boolean);
+
+            const englishReadmes = changedFiles.filter(f =>
+              f === 'README.md' ||
+              /^(claude-code|codex)\/skills\/[^/]+\/README\.md$/.test(f)
+            );
+
+            if (englishReadmes.length === 0) return;
+
+            const langs = ['ja', 'ko', 'zh', 'es'];
+            const warnings = [];
+
+            for (const readme of englishReadmes) {
+              const base = readme.replace(/README\.md$/, '');
+              for (const lang of langs) {
+                const translated = `${base}README.${lang}.md`;
+                if (!changedFiles.includes(translated)) {
+                  warnings.push(`- \`${readme}\` was updated but \`${translated}\` was not`);
+                }
+              }
+            }
+
+            if (warnings.length === 0) return;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: [
+                '## Translation Check',
+                '',
+                'The following translation files may need updating:',
+                '',
+                ...warnings,
+                '',
+                'If translation updates are not needed for this PR, you can ignore this warning.',
+                'See [CONTRIBUTING.md](CONTRIBUTING.md#translations) for the translation guide.'
+              ].join('\n')
+            });

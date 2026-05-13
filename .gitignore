@@ -1,0 +1,11 @@
+.DS_Store
+*.manifest
+.claude/
+
+.omc/
+
+.claude/settings.local.json
+.claude/worktrees/
+
+.pi/hooks-logs/
+**/.pi/hooks-logs/
