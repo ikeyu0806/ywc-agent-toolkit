@@ -5,7 +5,7 @@
 ## Hook 목록
 
 | 파일 | Event | Matcher | 역할 |
-|------|-------|---------|------|
+| ------ | ------- | --------- | ------ |
 | `block-dangerous-commands.py` | `PreToolUse` | `Bash` | 위험 Shell 명령 차단 (3단계) |
 | `check-claude-md-freshness.sh` | `PreToolUse` | `Bash` | git push 전 CLAUDE.md 최신성 검사 |
 | `cost-tracker.py` | `PostToolUse` + `Stop` | `*` / (없음) | tool 호출 로깅 및 세션 summary |
@@ -82,6 +82,7 @@ CLAUDE.md가 최근 커밋 이후 수정되지 않았다면 push를 차단하고
 permission 요청 대기 시 Slack Webhook으로 알림을 전송한다.
 
 **환경변수 설정 필요**:
+
 ```bash
 export CCH_SLA_WEBHOOK="https://hooks.slack.com/services/..."
 ```
