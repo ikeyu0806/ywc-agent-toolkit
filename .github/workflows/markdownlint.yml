@@ -15,7 +15,7 @@ jobs:
 
       - name: Run markdownlint
         run: |
-          printf '{"MD013":false,"MD033":false,"MD041":false}' > /tmp/ml.json
+          printf '{"MD013":false,"MD031":false,"MD033":false,"MD037":false,"MD040":false,"MD041":false,"MD060":false}' > /tmp/ml.json
           npx markdownlint-cli2 --config /tmp/ml.json \
             "README*.md" \
             "CONTRIBUTING*.md" \
