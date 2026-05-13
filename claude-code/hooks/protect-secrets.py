@@ -137,7 +137,7 @@ def check_file_path(file_path: str, safety_level: str = SAFETY_LEVEL) -> Pattern
 
 
 def check_bash_command(cmd: str, safety_level: str = SAFETY_LEVEL) -> Pattern | None:
-    if not cmd or is_allowlisted(cmd):
+    if not cmd:
         return None
     threshold = LEVELS.get(safety_level, 2)
     for p in BASH_PATTERNS:
