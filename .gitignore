@@ -9,3 +9,7 @@
 
 .pi/hooks-logs/
 **/.pi/hooks-logs/
+docs/ywc-plans
+tasks/
+.ywc-run-state.json
+.ywc-learnings.jsonl

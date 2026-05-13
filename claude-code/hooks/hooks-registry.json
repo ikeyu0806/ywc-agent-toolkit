@@ -1,0 +1,54 @@
+{
+  "hooks": {
+    "block-dangerous-commands": {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "command_global": "uv run ~/.claude/hooks/block-dangerous-commands.py",
+      "command_local": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/block-dangerous-commands.py",
+      "description": "위험 Shell 명령 실행 전 차단 (critical/high/strict 3단계)"
+    },
+    "check-claude-md-freshness": {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "command_global": "bash ~/.claude/hooks/check-claude-md-freshness.sh",
+      "command_local": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/check-claude-md-freshness.sh",
+      "description": "git push 전 CLAUDE.md 최신성 검사"
+    },
+    "cost-tracker": {
+      "events": ["PostToolUse", "Stop"],
+      "matcher_PostToolUse": "*",
+      "matcher_Stop": "",
+      "command_global": "uv run ~/.claude/hooks/cost-tracker.py",
+      "command_local": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/cost-tracker.py",
+      "description": "tool 호출 현황 로깅 및 session 종료 시 summary 출력"
+    },
+    "notify-permission": {
+      "event": "Notification",
+      "matcher": "",
+      "command_global": "uv run ~/.claude/hooks/notify-permission.py",
+      "command_local": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/notify-permission.py",
+      "description": "permission 대기 시 Slack 알림 (CCH_SLA_WEBHOOK env 필요)"
+    },
+    "permission-request": {
+      "event": "PermissionRequest",
+      "matcher": "",
+      "command_global": "uv run ~/.claude/hooks/permission_request.py --auto-allow",
+      "command_local": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/permission_request.py --auto-allow",
+      "description": "Read/Write/Edit 등 안전한 tool 자동 승인"
+    },
+    "protect-secrets": {
+      "event": "PreToolUse",
+      "matcher": "Read|Edit|Write|Bash",
+      "command_global": "uv run ~/.claude/hooks/protect-secrets.py",
+      "command_local": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/protect-secrets.py",
+      "description": ".env, SSH key 등 비밀 파일 접근·유출 차단"
+    },
+    "session-start": {
+      "event": "SessionStart",
+      "matcher": "",
+      "command_global": "uv run ~/.claude/hooks/session_start.py --load-context",
+      "command_local": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py --load-context",
+      "description": "session 시작 시 git 상태·CONTEXT.md·TODO·GitHub Issues 주입"
+    }
+  }
+}
