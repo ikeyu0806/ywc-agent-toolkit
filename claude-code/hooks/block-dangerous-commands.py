@@ -52,7 +52,7 @@ PATTERNS: list[Pattern] = [
     Pattern("high", "chmod-777",            re.compile(r'\bchmod\b.+\b777\b'),                                                     "chmod 777 is a security risk"),
     Pattern("high", "cat-env",              re.compile(r'\b(cat|less|head|tail|more)\s+\.env\b'),                                  "reading .env file exposes secrets"),
     Pattern("high", "cat-secrets",          re.compile(r'\b(cat|less|head|tail|more)\b.+(credentials|secrets?|\.pem|\.key|id_rsa|id_ed25519)', re.IGNORECASE), "reading secrets file"),
-    Pattern("high", "env-dump",             re.compile(r'\b(printenv|^env)\s*([;&|]|$)'),                                          "env dump may expose secrets"),
+    Pattern("high", "env-dump",             re.compile(r'\b(printenv|env)\b\s*([;&|]|$)'),                                         "env dump may expose secrets"),
     Pattern("high", "echo-secret",          re.compile(r'\becho\b.+\$\w*(SECRET|KEY|TOKEN|PASSWORD|API_|PRIVATE)', re.IGNORECASE), "echoing secret variable"),
     Pattern("high", "docker-vol-rm",        re.compile(r'\bdocker\s+volume\s+(rm|prune)'),                                         "docker volume deletion loses data"),
     Pattern("high", "rm-ssh",               re.compile(r'\brm\b.+\.ssh\/(id_|authorized_keys|known_hosts)'),                       "deleting SSH keys"),
