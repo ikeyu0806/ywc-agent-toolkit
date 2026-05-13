@@ -3,13 +3,14 @@
 # ywc-agent-toolkit 통합 설치 스크립트
 #
 # Usage:
-#   bash scripts/install.sh --cc                        Claude Code 전체 설치
-#   bash scripts/install.sh --codex                     Codex 전체 설치
-#   bash scripts/install.sh --all                       양쪽 전체 설치
-#   bash scripts/install.sh --cc <skill> [skill...]     Claude Code 특정 스킬
-#   bash scripts/install.sh --codex <skill> [skill...]  Codex 특정 스킬
-#   bash scripts/install.sh --list [--cc|--codex]       설치 가능한 스킬 목록
-#   bash scripts/install.sh --help                      이 도움말
+#   bash scripts/install.sh --cc                            Claude Code 전체 설치
+#   bash scripts/install.sh --codex                         Codex 전체 설치
+#   bash scripts/install.sh --all                           양쪽 전체 설치
+#   bash scripts/install.sh --cc <skill> [skill...]         Claude Code 특정 스킬
+#   bash scripts/install.sh --codex <skill> [skill...]      Codex 특정 스킬
+#   bash scripts/install.sh --hooks [--global|--local] [hook-name...]  Hook 설치
+#   bash scripts/install.sh --list [--cc|--codex|--hooks]   설치 가능한 목록
+#   bash scripts/install.sh --help                          이 도움말
 #
 # Environment:
 #   CLAUDE_SKILLS_DIR   Claude Code 설치 경로 override (default: ~/.claude/skills)
@@ -20,6 +21,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CC_SRC="$REPO_ROOT/claude-code/skills"
 CODEX_SRC="$REPO_ROOT/codex/skills"
+HOOKS_SRC="$REPO_ROOT/claude-code/hooks"
+HOOKS_REGISTRY="$HOOKS_SRC/hooks-registry.json"
 CC_DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 CODEX_DEST="${CODEX_HOME:-$HOME/.codex}/skills"
 CC_MANIFEST="$CC_DEST/.ywc-agent-toolkit.manifest"
@@ -29,6 +32,7 @@ CC_INSTALLED=0
 CODEX_INSTALLED=0
 CC_PRUNED=0
 CODEX_PRUNED=0
+HOOKS_INSTALLED=0
 
 # ---- helpers ----------------------------------------------------------------
 
@@ -188,18 +192,228 @@ run_codex_install() {
   fi
 }
 
+# ---- Hooks ------------------------------------------------------------------
+
+# Merge a single (event, matcher, command) entry into settings.json idempotently.
+# Creates the file as '{}' if it does not exist. Backs up before modifying.
+# Atomic: writes to a temp file and renames.
+merge_hook_settings() {
+  local settings_file="$1"
+  local event="$2"
+  local matcher="$3"
+  local command="$4"
+
+  [ -f "$settings_file" ] || echo '{}' > "$settings_file"
+
+  if ! jq empty "$settings_file" 2>/dev/null; then
+    echo "  ! 유효하지 않은 JSON: $settings_file" >&2
+    return 1
+  fi
+
+  cp "$settings_file" "${settings_file}.bak"
+
+  # jq filter covers all 4 merge cases from spec:
+  #   1. no .hooks key          → create it
+  #   2. no .hooks[$event]      → create the event array
+  #   3. no matching matcher    → append new matcher group
+  #   4. matcher exists         → append command only if not already present
+  local filter='
+    .hooks //= {} |
+    .hooks[$event] //= [] |
+    if (.hooks[$event] | any(.matcher == $matcher)) then
+      .hooks[$event] |= map(
+        if .matcher == $matcher then
+          if (.hooks | any(.command == $cmd)) then .
+          else .hooks += [{"type": "command", "command": $cmd}]
+          end
+        else .
+        end
+      )
+    else
+      .hooks[$event] += [{"matcher": $matcher, "hooks": [{"type": "command", "command": $cmd}]}]
+    end
+  '
+
+  local tmp
+  tmp="$(mktemp)"
+  if jq --arg event "$event" --arg matcher "$matcher" --arg cmd "$command" \
+        "$filter" "$settings_file" > "$tmp" \
+      && jq empty "$tmp" 2>/dev/null; then
+    mv "$tmp" "$settings_file"
+    rm -f "${settings_file}.bak"
+  else
+    echo "  ! settings.json 병합 실패, 복원 중..." >&2
+    cp "${settings_file}.bak" "$settings_file"
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+run_hook_install() {
+  local scope="$1"
+  shift
+  local hook_names=("$@")
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq가 필요합니다." >&2
+    echo "  macOS:  brew install jq" >&2
+    echo "  Ubuntu: sudo apt-get install jq" >&2
+    exit 1
+  fi
+
+  if ! command -v uv >/dev/null 2>&1; then
+    echo "Warning: uv 미설치. Python hook은 실행 시 오류가 발생합니다." >&2
+    echo "  설치: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+  fi
+
+  local dest_hooks settings manifest cmd_key
+  if [ "$scope" = "global" ]; then
+    dest_hooks="$HOME/.claude/hooks"
+    settings="$HOME/.claude/settings.json"
+    manifest="$dest_hooks/.ywc-agent-toolkit-hooks.manifest"
+    cmd_key="command_global"
+  else
+    dest_hooks="$(pwd)/.claude/hooks"
+    settings="$(pwd)/.claude/settings.json"
+    manifest="$dest_hooks/.ywc-agent-toolkit-hooks.manifest"
+    cmd_key="command_local"
+  fi
+
+  mkdir -p "$dest_hooks"
+  mkdir -p "$(dirname "$settings")"
+
+  echo "Hooks → $dest_hooks"
+  echo "Settings → $settings"
+
+  # Default: install all hooks
+  if [ "${#hook_names[@]}" -eq 0 ]; then
+    while IFS= read -r _hook; do
+      hook_names+=("$_hook")
+    done < <(jq -r '.hooks | keys[]' "$HOOKS_REGISTRY")
+  fi
+
+  # Validate names before touching anything
+  local name
+  for name in "${hook_names[@]}"; do
+    if ! jq -e --arg n "$name" '.hooks | has($n)' "$HOOKS_REGISTRY" >/dev/null 2>&1; then
+      echo "  알 수 없는 hook: $name" >&2
+      echo "  사용 가능한 hook:" >&2
+      jq -r '.hooks | keys[]' "$HOOKS_REGISTRY" >&2
+      exit 1
+    fi
+  done
+
+  local installed_names=()
+  for name in "${hook_names[@]}"; do
+    local entry
+    entry="$(jq -c --arg n "$name" '.hooks[$n]' "$HOOKS_REGISTRY")"
+
+    local cmd_path
+    cmd_path="$(jq -r ".$cmd_key" <<< "$entry")"
+
+    # Extract the hooks filepath token from the command (robust against flags like --auto-allow)
+    local hooks_word filename
+    hooks_word="$(printf '%s' "$cmd_path" | tr ' ' '\n' | grep '\.claude/hooks/')"
+    filename="$(basename "$hooks_word")"
+
+    local src_file="$HOOKS_SRC/$filename"
+    if [ ! -f "$src_file" ]; then
+      echo "  ! $name (소스 파일 없음: $filename)" >&2
+      exit 1
+    fi
+
+    cp "$src_file" "$dest_hooks/$filename" || {
+      echo "  ! $name (파일 복사 실패)" >&2
+      exit 1
+    }
+    [ "${filename##*.}" = "sh" ] && chmod 755 "$dest_hooks/$filename"
+    echo "  ✓ $name ($filename)"
+    HOOKS_INSTALLED=$((HOOKS_INSTALLED + 1))
+
+    # Notify-permission requires a webhook env var
+    if [ "$name" = "notify-permission" ]; then
+      echo "    → CCH_SLA_WEBHOOK 환경변수를 설정해야 Slack 알림이 작동합니다."
+    fi
+
+    # Merge settings.json: cost-tracker has multi-event (events array)
+    if jq -e 'has("events")' <<< "$entry" >/dev/null 2>&1; then
+      local events=()
+      while IFS= read -r _evt; do
+        events+=("$_evt")
+      done < <(jq -r '.events[]' <<< "$entry")
+      local evt
+      for evt in "${events[@]}"; do
+        local matcher
+        matcher="$(jq -r --arg k "matcher_${evt}" '.[$k]' <<< "$entry")"
+        merge_hook_settings "$settings" "$evt" "$matcher" "$cmd_path"
+      done
+    else
+      local event matcher
+      event="$(jq -r '.event' <<< "$entry")"
+      matcher="$(jq -r '.matcher' <<< "$entry")"
+      merge_hook_settings "$settings" "$event" "$matcher" "$cmd_path"
+    fi
+
+    installed_names+=("$name")
+  done
+
+  # Prune orphaned hook files from previous installs
+  if [ -f "$manifest" ]; then
+    local previous
+    previous="$(grep -Ev '^(#|$)' "$manifest" || true)"
+    if [ -n "$previous" ]; then
+      local current_set orphans
+      if [ "${#installed_names[@]}" -gt 0 ]; then
+        current_set="$(printf '%s\n' "${installed_names[@]}" | sort -u)"
+      else
+        current_set=""
+      fi
+      orphans="$(comm -23 \
+        <(printf '%s\n' "$previous" | sort -u) \
+        <(printf '%s\n' "$current_set" | sort -u) || true)"
+      if [ -n "$orphans" ]; then
+        echo "  고아 hook 제거 중:"
+        while IFS= read -r orphan; do
+          [ -n "$orphan" ] || continue
+          local orphan_entry
+          orphan_entry="$(jq -c --arg n "$orphan" '.hooks[$n] // empty' "$HOOKS_REGISTRY" 2>/dev/null || true)"
+          [ -n "$orphan_entry" ] || continue
+          local orphan_cmd orphan_word orphan_file
+          orphan_cmd="$(jq -r ".$cmd_key" <<< "$orphan_entry")"
+          orphan_word="$(printf '%s' "$orphan_cmd" | tr ' ' '\n' | grep '\.claude/hooks/')"
+          orphan_file="$dest_hooks/$(basename "$orphan_word")"
+          if [ -f "$orphan_file" ]; then
+            rm "$orphan_file"
+            echo "    ✗ $orphan"
+          fi
+        done <<< "$orphans"
+      fi
+    fi
+  fi
+
+  # Write manifest
+  {
+    echo "# ywc-agent-toolkit hooks install manifest"
+    echo "# Auto-generated — do not edit manually."
+    if [ "${#installed_names[@]}" -gt 0 ]; then
+      printf '%s\n' "${installed_names[@]}" | sort -u
+    fi
+  } > "$manifest"
+}
+
 # ---- usage ------------------------------------------------------------------
 
 usage() {
   cat >&2 <<'EOF'
 Usage:
-  bash scripts/install.sh --cc                        Claude Code 전체 설치
-  bash scripts/install.sh --codex                     Codex 전체 설치
-  bash scripts/install.sh --all                       양쪽 전체 설치
-  bash scripts/install.sh --cc <skill> [skill...]     Claude Code 특정 스킬
-  bash scripts/install.sh --codex <skill> [skill...]  Codex 특정 스킬
-  bash scripts/install.sh --list [--cc|--codex]       설치 가능한 스킬 목록
-  bash scripts/install.sh --help                      이 도움말
+  bash scripts/install.sh --cc                            Claude Code 전체 설치
+  bash scripts/install.sh --codex                         Codex 전체 설치
+  bash scripts/install.sh --all                           양쪽 전체 설치
+  bash scripts/install.sh --cc <skill> [skill...]         Claude Code 특정 스킬
+  bash scripts/install.sh --codex <skill> [skill...]      Codex 특정 스킬
+  bash scripts/install.sh --hooks [--global|--local] [hook-name...]  Hook 설치
+  bash scripts/install.sh --list [--cc|--codex|--hooks]   설치 가능한 목록
+  bash scripts/install.sh --help                          이 도움말
 
 Environment:
   CLAUDE_SKILLS_DIR   Claude Code 설치 경로 (default: ~/.claude/skills)
@@ -215,7 +429,10 @@ if [ "$#" -eq 0 ]; then
 fi
 
 MODE=""
+HOOK_SCOPE="global"
+IN_HOOKS=0
 declare -a SKILLS=()
+declare -a HOOK_NAMES=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -231,9 +448,37 @@ while [ "$#" -gt 0 ]; do
       MODE="all"
       shift
       ;;
+    --hooks)
+      MODE="hooks"
+      IN_HOOKS=1
+      shift
+      ;;
+    --global)
+      if [ "$IN_HOOKS" -eq 1 ]; then
+        HOOK_SCOPE="global"
+      else
+        echo "Error: --global은 --hooks 와 함께 사용해야 합니다" >&2
+        usage
+        exit 1
+      fi
+      shift
+      ;;
+    --local)
+      if [ "$IN_HOOKS" -eq 1 ]; then
+        HOOK_SCOPE="local"
+      else
+        echo "Error: --local은 --hooks 와 함께 사용해야 합니다" >&2
+        usage
+        exit 1
+      fi
+      shift
+      ;;
     --list)
       shift
-      if [ "${1:-}" = "--cc" ]; then
+      if [ "${1:-}" = "--hooks" ]; then
+        echo "=== Hooks ==="
+        jq -r '.hooks | to_entries[] | "  \(.key)\t\(.value.description)"' "$HOOKS_REGISTRY"
+      elif [ "${1:-}" = "--cc" ]; then
         echo "=== Claude Code ==="
         list_skills "$CC_SRC"
       elif [ "${1:-}" = "--codex" ]; then
@@ -253,7 +498,11 @@ while [ "$#" -gt 0 ]; do
       exit 0
       ;;
     *)
-      SKILLS+=("$1")
+      if [ "$IN_HOOKS" -eq 1 ]; then
+        HOOK_NAMES+=("$1")
+      else
+        SKILLS+=("$1")
+      fi
       shift
       ;;
   esac
@@ -271,8 +520,11 @@ case "$MODE" in
     echo ""
     run_codex_install
     ;;
+  hooks)
+    run_hook_install "$HOOK_SCOPE" "${HOOK_NAMES[@]+"${HOOK_NAMES[@]}"}"
+    ;;
   *)
-    echo "Error: --cc / --codex / --all のいずれかを指定してください" >&2
+    echo "Error: --cc / --codex / --all / --hooks のいずれかを指定してください" >&2
     usage
     exit 1
     ;;
@@ -289,4 +541,8 @@ if [ "$CODEX_INSTALLED" -gt 0 ]; then
   msg="Codex: ${CODEX_INSTALLED}개 스킬 설치"
   [ "$CODEX_PRUNED" -gt 0 ] && msg+=" / ${CODEX_PRUNED}개 제거"
   echo "$msg → $CODEX_DEST"
+fi
+if [ "$HOOKS_INSTALLED" -gt 0 ]; then
+  echo "Hooks: ${HOOKS_INSTALLED}개 설치 완료"
+  echo "Claude Code 를 재시작하면 설치된 hook이 반영됩니다."
 fi
