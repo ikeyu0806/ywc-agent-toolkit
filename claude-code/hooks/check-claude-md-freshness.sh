@@ -47,7 +47,7 @@ fi
 if printf '%s' "$cmd" | grep -qE '(^|[[:space:]])(--tags|--follow-tags)([[:space:]]|$)'; then
   exit 0
 fi
-push_args=$(printf '%s' "$cmd" | sed -E 's/.*[[:space:]&|;]git[[:space:]]+push[[:space:]]+//')
+push_args=$(printf '%s' "$cmd" | sed -E 's/(^|.*[[:space:]&|;])git[[:space:]]+push[[:space:]]+//')
 if [[ -n "$push_args" ]]; then
   read -ra _tokens <<<"$push_args"
   refspecs=()
