@@ -3,6 +3,7 @@
 .claude/
 
 .omc/
+.entire/
 
 .claude/settings.local.json
 .claude/worktrees/
