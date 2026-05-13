@@ -1,0 +1,88 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What This Repository Is
+
+A skill distribution toolkit for **Claude Code** (26 skills) and **Codex** (31 skills). Skills are installed locally via `scripts/install.sh` and activate inside the respective AI tool by matching user intent from `description:` frontmatter.
+
+## Key Commands
+
+```bash
+# Install all skills
+bash scripts/install.sh --cc          # Claude Code → ~/.claude/skills/
+bash scripts/install.sh --codex       # Codex → ~/.codex/skills/
+bash scripts/install.sh --all         # both
+
+# Install specific skills only
+bash scripts/install.sh --cc ywc-plan ywc-commit
+
+# List available skills
+bash scripts/install.sh --list
+bash scripts/install.sh --list --cc
+
+# Validate skill structure locally (mirrors CI)
+bash scripts/validate.sh
+```
+
+Override install paths via environment variables:
+- `CLAUDE_SKILLS_DIR` — Claude Code install path (default: `~/.claude/skills`)
+- `CODEX_HOME` — Codex home path (default: `~/.codex`)
+
+## Repository Structure
+
+```
+claude-code/skills/<skill-name>/   # one directory per skill
+  SKILL.md                         # required — frontmatter + skill body
+  README.md                        # required — English usage guide
+  README.ja.md / README.ko.md ...  # optional translations
+  references/                      # optional — long reference docs extracted from SKILL.md
+codex/skills/                      # single bundle (not per-subdirectory)
+  SKILL.md                         # root-level, covers all Codex skills
+scripts/
+  install.sh                       # install/prune/list entry point
+  validate.sh                      # local CI mirror
+.github/workflows/
+  validate.yml                     # skill structure + shellcheck + dry-run
+  markdownlint.yml                 # README*.md lint
+  release.yml                      # GitHub Release on v* tags (reads CHANGELOG.md)
+  translation-check.yml            # informational warning, does not block merge
+```
+
+**Critical distinction**: `claude-code/skills/` uses one subdirectory per skill; `codex/skills/` is a single flat bundle. The validation scripts and install logic handle these differently — do not treat them as symmetric.
+
+## Skill Authoring Rules
+
+Every `claude-code` skill directory must contain:
+1. `SKILL.md` with `name:` and `description:` YAML frontmatter
+2. `README.md` with usage examples in English
+
+The `description:` field drives activation — it must include trigger phrases users will type AND explicit "Do not use for..." anti-triggers to prevent false matches against sibling skills.
+
+Skill names follow `ywc-<kebab-case>` for all Claude Code skills. Keep SKILL.md under ~500 lines; extract long sections to `references/`.
+
+Do not reference other skills with `@skill-name` (force-load) — it consumes excessive context. Reference by skill name only.
+
+## CI Checks (all PRs must pass)
+
+| Workflow | What it checks |
+|----------|---------------|
+| `validate` | Each `claude-code/skills/*/SKILL.md` exists with `name:` and `description:`; `codex/skills/SKILL.md` exists with same; shellcheck on `scripts/`; `--list` dry run |
+| `markdownlint` | `README*.md` and `CONTRIBUTING*.md` pass MD formatting (MD013, MD033, MD041 disabled) |
+| `translation-check` | Informational only — warns if English README updated without translation update |
+
+## Release Process
+
+Releases are triggered by pushing a `v*` tag. The workflow extracts the matching `## [version]` section from `CHANGELOG.md` as the release body. Pre-release if tag contains `-` (e.g., `v1.1.0-beta.1`).
+
+## Commit Conventions
+
+```
+feat: add ywc-api-design skill
+fix: install.sh prune not working on partial install
+i18n: add Japanese translation for ywc-plan README
+ci: add shellcheck to validate workflow
+chore: update .gitignore
+```
+
+Types: `feat`, `fix`, `docs`, `i18n`, `ci`, `chore`
