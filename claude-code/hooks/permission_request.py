@@ -33,9 +33,6 @@ LOG_DIR = Path.home() / ".claude" / "hooks-logs"
 # Operations that can be auto-allowed
 SAFE_OPERATIONS: dict[str, object] = {
     "Read": lambda tool_input: True,
-    "Write": lambda tool_input: True,
-    "Edit": lambda tool_input: True,
-    "MultiEdit": lambda tool_input: True,
     "Glob": lambda tool_input: True,
     "Grep": lambda tool_input: True,
     "Bash": lambda tool_input: is_safe_bash_command(tool_input.get("command", "")),
@@ -69,6 +66,8 @@ def is_safe_bash_command(command: str) -> bool:
     if not command:
         return False
     normalized = command.strip()
+    if re.search(r'[;&|`$()<>\n\r]', normalized):
+        return False
     for pattern in SAFE_BASH_COMMANDS:
         if re.search(pattern, normalized):
             return True
