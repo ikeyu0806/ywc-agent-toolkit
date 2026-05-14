@@ -1,0 +1,37 @@
+{
+  "name": "ywc-agent-toolkit",
+  "owner": {
+    "name": "yongwoon",
+    "email": "yongwoon.kim@legalontech.jp"
+  },
+  "metadata": {
+    "description": "YWC skill distribution toolkit for Claude Code — 26 skills covering planning, commits, PR creation, spec writing, code review, security audit, and development workflows",
+    "version": "1.5.1"
+  },
+  "plugins": [
+    {
+      "name": "ywc-agent-toolkit",
+      "source": "./",
+      "description": "YWC skill distribution toolkit for Claude Code — 26 skills covering planning, commits, PR creation, spec writing, code review, security audit, and development workflows",
+      "version": "1.5.1",
+      "author": {
+        "name": "yongwoon",
+        "email": "yongwoon.kim@legalontech.jp"
+      },
+      "repository": "https://github.com/yongwoon/ywc-agent-toolkit",
+      "license": "MIT",
+      "keywords": [
+        "skills",
+        "workflow",
+        "pr",
+        "commit",
+        "planning",
+        "spec",
+        "review",
+        "security"
+      ],
+      "category": "workflow",
+      "strict": false
+    }
+  ]
+}
