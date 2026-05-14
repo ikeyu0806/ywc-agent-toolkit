@@ -12,6 +12,18 @@ Actualmente incluye 26 skills para Claude Code y 27 skills para Codex.
 
 ## Instalación
 
+### Marketplace de plugins de Claude Code (recomendado)
+
+```bash
+# Añadir como fuente de marketplace (una sola vez)
+/plugin marketplace add yongwoon/ywc-agent-toolkit
+```
+
+Después de ejecutar el comando, abra la pestaña **Marketplaces** en el Plugin UI e instale **ywc-agent-toolkit** desde allí.
+Las skills se instalan automáticamente en `~/.claude/skills/` sin necesidad de clonar ni ejecutar bash.
+
+### Script bash
+
 ```bash
 git clone https://github.com/yongwoon/ywc-agent-toolkit.git
 cd ywc-agent-toolkit

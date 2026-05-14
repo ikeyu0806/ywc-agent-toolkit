@@ -13,6 +13,18 @@
 
 ## 安装
 
+### Claude Code 插件市场（推荐）
+
+```bash
+# 添加市场源（仅需一次）
+/plugin marketplace add yongwoon/ywc-agent-toolkit
+```
+
+运行命令后，在 Plugin UI 的 **Marketplaces** 标签页中安装 **ywc-agent-toolkit**。
+无需克隆或运行 bash，自动安装到 `~/.claude/skills/`。
+
+### bash 脚本
+
 ```bash
 git clone https://github.com/yongwoon/ywc-agent-toolkit.git
 cd ywc-agent-toolkit
