@@ -27,9 +27,18 @@ When tempted to bend a rule, check this table first:
 
 **Violating the letter of these rules is violating the spirit.** Safety invariants (DB migration separation, library introduction separation, phase hard gates) have no exceptions.
 
+## Arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `--lang <language>` | _(inferred or asked)_ | Output language for task documents: `korean` \| `japanese` \| `english`. |
+| `--tasks-dir <path>` | `tasks/` | Root directory where task directories are written. Override to support re-plan iteration in a separate directory (e.g., `--tasks-dir tasks-v2/`). |
+
 ## Language Option
 
-This skill supports `korean` | `japanese` | `english` (default: `english`) for task document output. If the user does not specify a language, **ask for confirmation** before generating any tasks.
+When `--lang` is not specified, this skill first attempts to infer the language from the project's CLAUDE.md (Language Policy section or Documentation Writing Guidelines). Only if inference fails does it ask the user.
+
+This skill supports `korean` | `japanese` | `english` (default: `english`) for task document output. When `--lang` is omitted, follow the inference-first behavior above — only ask the user for confirmation if inference from CLAUDE.md fails.
 
 For the full language detection examples, language-specific writing rules (technical-term policy, Korean/Japanese examples), and the shared technical-term whitelist, **read [references/language-policy.md](references/language-policy.md)** when the user requests Korean or Japanese output. English output does not require reading this reference.
 
@@ -111,7 +120,7 @@ Review the specification for completeness and verify that sufficient information
 
 ### Step 4: Confirm Language
 
-If the user has not specified an output language, ask:
+If `--lang` is provided, skip this step. Otherwise, attempt to infer the language from the project's CLAUDE.md (Language Policy section or Documentation Writing Guidelines). Only if inference fails or is ambiguous, ask:
 
 > "Which language should the task documents be written in? (korean / japanese / english)"
 
@@ -329,7 +338,7 @@ Write structured scenario-based tests (Steps + Expected Result).
 
 ### Step 10: Generate Dependency Graph
 
-After generating all tasks, create `tasks/dependency-graph.md` at the top level. This file serves as the single source of truth for execution order.
+After generating all tasks, create `<tasks-dir>/dependency-graph.md` at the top level (where `<tasks-dir>` is the value of `--tasks-dir`, defaulting to `tasks/`). This file serves as the single source of truth for execution order.
 
 Refer to `references/dependency-graph.md.template` for format. List tasks by phase and express each task's dependencies using arrow notation.
 
@@ -379,9 +388,9 @@ After generating all tasks, verify the following:
 The final output includes:
 
 1. **Task list summary**: A table organizing all tasks by phase
-2. **Directory generation**: Task directories and files created under `tasks/`
-3. **Dependency Graph**: `tasks/dependency-graph.md` generated — single source of truth for execution order
-4. **Parallel Execution Notes**: Included in `tasks/dependency-graph.md` when parallel worktree execution is expected
+2. **Directory generation**: Task directories and files created under `<tasks-dir>/` (default: `tasks/`)
+3. **Dependency Graph**: `<tasks-dir>/dependency-graph.md` generated — single source of truth for execution order
+4. **Parallel Execution Notes**: Included in `<tasks-dir>/dependency-graph.md` when parallel worktree execution is expected
 
 When parallel execution is expected, verify that each task is safe for isolated worktree or agent execution.
 

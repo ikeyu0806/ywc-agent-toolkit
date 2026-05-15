@@ -9,6 +9,15 @@ description: (ywc) Use when the user has a rough feature idea or change request 
 
 This skill converts a rough idea, vague request, or partially-formed change description into one of two artifacts: (1) a **direct execution plan** for Small changes that can be implemented in a single PR without task decomposition, or (2) a **spec document** for Medium/Large changes that will be handed off to `ywc-spec-validate` and then `ywc-task-generator`. Input: natural-language request from the user. Output: either a `plan.md` (Small path) or a `docs/ywc-plans/<feature>.md` (Medium/Large path), plus an explicit handoff instruction.
 
+## Arguments
+
+| Flag | Type | Description |
+|---|---|---|
+| `--non-interactive` | flag | Skip `AskUserQuestion` calls in Step 1. If **What** is absent from the user's initial message, stop immediately with `NEEDS_CONTEXT` — planning is impossible without a concrete change description. Fill missing anchors with defaults: Why = `"not specified"`, Out of Scope = `"nothing explicitly excluded"`, Done When = `"all tasks merged and ywc-impl-review returns DONE"`. |
+| `--update-spec <path>` | string | Path to an existing spec file. Activates Re-plan Mode (Step 4c). Must be used together with `--failure-context`. If provided without `--failure-context`, stop immediately with `BLOCKED` and report the missing flag. Mutually exclusive with normal spec generation. |
+| `--failure-context <text>` | string | The "Fix Priority" section text from `ywc-impl-review`. Used together with `--update-spec`. If provided without `--update-spec`, stop immediately with `BLOCKED` and report the missing flag. |
+| `--output <path>` | string | Explicit output path for the generated spec or plan (e.g., `--output docs/ywc-plans/agentic-iteration-1.md`). When omitted, defaults to `./plan.md` (Small) or `docs/ywc-plans/<slug>.md` (Medium/Large). |
+
 ## Rationalization Defense
 
 When tempted to bypass a rule, check this table first:
@@ -45,6 +54,8 @@ Ask focused questions to extract four anchors. Use one round of consolidated que
 | **Done When** | "How will we know it's complete? What observable outcome proves success?" | Done conditions become the Acceptance Criteria in the artifact. |
 
 If the user's initial message already answers all four anchors, skip the questions and confirm understanding in one sentence.
+
+**`--non-interactive` mode:** When this flag is present, do not call `AskUserQuestion` at any point in Step 1. Handle missing anchors as follows: if **What** is absent, stop immediately with `NEEDS_CONTEXT` (planning is impossible without a concrete change description); fill **Why** with `"not specified"`, **Out of Scope** with `"nothing explicitly excluded"`, and **Done When** with `"all tasks merged and ywc-impl-review returns DONE"` when those anchors are missing. Proceed directly to Step 2 without waiting for user input.
 
 ### Step 2: Investigate the Codebase
 
@@ -86,7 +97,7 @@ For the full scale-assessment heuristics including borderline-case examples, see
 
 ### Step 4a: Small Path — Direct Execution Plan
 
-When scale is **Small**, generate `plan.md` at a user-specified path (default: `./plan.md`).
+When scale is **Small**, generate `plan.md` at a user-specified path (default: `./plan.md`). If `--output <path>` is provided, write to that path instead of the default.
 
 For the full `plan.md` structure and a worked example, see [references/small-plan-template.md](references/small-plan-template.md).
 
@@ -101,7 +112,7 @@ After writing the plan, surface this handoff message to the user:
 
 ### Step 4b: Medium/Large Path — Spec Document
 
-When scale is **Medium** or **Large**, generate a spec document under `docs/ywc-plans/<feature-slug>.md` (or the project's equivalent — derive from Step 2 investigation).
+When scale is **Medium** or **Large**, generate a spec document under `docs/ywc-plans/<feature-slug>.md` (or the project's equivalent — derive from Step 2 investigation). If `--output <path>` is provided, write to that path instead of the derived slug path.
 
 For the full spec structure aligned with `ywc-spec-validate`'s evaluation dimensions, see [references/spec-template.md](references/spec-template.md).
 
@@ -110,6 +121,24 @@ The spec **must** include: Purpose, Scope, Out of Scope, Acceptance Criteria, Fu
 For **Large** scale, also surface this advisory before writing the spec:
 
 > "This change is Large (15+ expected tasks). Consider splitting into multiple smaller specs by feature boundary. Splitting now is cheaper than splitting after `ywc-task-generator` produces 20+ task directories. Proceed with single spec, or split first?"
+
+### Step 4c: Re-plan Mode
+
+Activated when `--update-spec <path>` and `--failure-context <text>` are both provided. If exactly one is provided without the other, stop immediately with `BLOCKED` and report the missing flag. This mode is mutually exclusive with normal spec generation (Steps 4a and 4b).
+
+**Behavior:**
+
+1. Read the existing spec at `<path>`. If the file does not exist, report an error and stop — do not create a new file.
+2. Determine the current iteration number by counting existing `## Iteration N Amendments` sections in the file. The new section number is N + 1 (starting at 1 if none exist).
+3. Using `--failure-context` as the input (the "Fix Priority" section text from `ywc-impl-review`), draft amendment content that addresses only the failing areas.
+4. **Append** `## Iteration N Amendments` to the end of the existing spec file. Do NOT create a new file, do NOT modify any completed sections above the new section.
+5. The appended section must include: which requirements failed (from `--failure-context`), the amended approach, and updated Acceptance Criteria for the affected items only.
+
+**Constraints:**
+
+- Never overwrite or reorder existing content.
+- Never create a new spec file — only append to the file at `<path>`.
+- `--output` is ignored in Re-plan Mode (output path is always the `--update-spec` path).
 
 ### Step 5: Handoff
 
