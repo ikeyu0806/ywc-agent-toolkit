@@ -9,7 +9,7 @@
 Claude Code および Codex 向けの開発ワークフロー自動化スキル集です。
 計画立案・仕様書作成・タスク分解・コード生成・レビュー・リリースまでをカバーします。
 
-現在、Claude Code skill 26 個と Codex skill 27 個を提供しています。
+現在、Claude Code skill 36 個、Codex skill 37 個、Claude Code agent 12 個、Codex custom agent 7 個を提供しています。
 
 ## インストール
 
@@ -57,3 +57,23 @@ bash scripts/install.sh --all
 ```
 
 > **⚠️ Token コスト** — HTML 出力は Markdown と比べて output token を 2〜4 倍消費し、生成時間も長くなります。デフォルトは `markdown` です。人がブラウザで読む report に限って HTML を有効化してください。
+
+---
+
+## Custom Agent
+
+Claude Code には worker / reviewer / specialist dispatch 用の **12 個**の custom agent が含まれています。`~/.claude/agents/` にインストールされます。詳細は [`claude-code/agents/README.md`](claude-code/agents/README.md) をご参照ください。
+
+Codex には `ywc-*` skill を補完する **7 個**の read-only specialist agent が含まれます。`~/.codex/agents/` にインストールされます。
+
+| Agent | 用途 | Sandbox |
+|-------|------|---------|
+| `ywc-architect` | アーキテクチャ決定・トレードオフ advisor | `read-only` |
+| `ywc-security-engineer` | 静的セキュリティレビューと threat model 分類 | `read-only` |
+| `ywc-root-cause-analyst` | 根本原因・障害原因の分析 | `read-only` |
+| `ywc-performance-engineer` | パフォーマンスレビューとプロファイリング推奨 | `read-only` |
+| `ywc-typescript-reviewer` | TypeScript / JavaScript 言語特化レビュー | `read-only` |
+| `ywc-python-reviewer` | Python 言語特化レビュー | `read-only` |
+| `ywc-go-reviewer` | Go 言語特化レビュー | `read-only` |
+
+詳細は [README.md](README.md) をご参照ください。
