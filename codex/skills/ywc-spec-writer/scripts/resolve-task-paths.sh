@@ -16,8 +16,8 @@
 # Output: one absolute path per line, deduplicated, sorted by basename.
 # Quote glob patterns in the caller command. zsh and bash may expand or reject
 # unquoted globs before this script can resolve them against task basenames.
-# Exit 0: at least one task resolved.
-# Exit 1: no arguments, or no task matched any provided pattern,
+# Exit 0: every provided argument resolved to at least one task.
+# Exit 1: no arguments, any provided pattern matched no tasks,
 #         or tasks root not found.
 #
 # Environment overrides:
@@ -39,32 +39,69 @@ if [[ ! -d "$TASKS_ROOT" ]]; then
   exit 1
 fi
 
-declare -A path_by_base=()
+task_bases=()
+task_paths=()
+
+has_task_base() {
+  local candidate="$1" base
+  (( ${#task_bases[@]} == 0 )) && return 1
+  for base in "${task_bases[@]}"; do
+    [[ "$base" == "$candidate" ]] && return 0
+  done
+  return 1
+}
+
 while IFS= read -r dir; do
   [[ -z "$dir" ]] && continue
   base="$(basename "$dir")"
   # Prefer active tasks over completed when both exist with the same basename.
-  if [[ -z "${path_by_base[$base]:-}" ]]; then
-    path_by_base["$base"]="$dir"
+  if ! has_task_base "$base"; then
+    task_bases+=("$base")
+    task_paths+=("$dir")
   fi
 done < <(
   find "$TASKS_ROOT" -mindepth 1 -maxdepth 1 -type d ! -name completed 2>/dev/null
   find "$TASKS_ROOT/completed" -mindepth 1 -maxdepth 1 -type d 2>/dev/null
 )
 
-if [[ ${#path_by_base[@]} -eq 0 ]]; then
+if [[ ${#task_bases[@]} -eq 0 ]]; then
   echo "ywc-spec-writer: no task directories found under $TASKS_ROOT" >&2
   exit 1
 fi
 
-mapfile -t sorted_bases < <(printf '%s\n' "${!path_by_base[@]}" | sort)
+sorted_bases=()
+while IFS= read -r base; do
+  [[ -z "$base" ]] && continue
+  sorted_bases+=("$base")
+done < <(printf '%s\n' "${task_bases[@]}" | sort)
 
-declare -A emitted=()
+emitted_bases=()
+is_emitted() {
+  local candidate="$1" base
+  (( ${#emitted_bases[@]} == 0 )) && return 1
+  for base in "${emitted_bases[@]}"; do
+    [[ "$base" == "$candidate" ]] && return 0
+  done
+  return 1
+}
+
 emit() {
   local base="$1"
-  [[ -n "${emitted[$base]:-}" ]] && return
-  emitted["$base"]=1
+  is_emitted "$base" && return
+  emitted_bases+=("$base")
   # Defer output; printed after all args are processed to guarantee global sort.
+}
+
+path_for_base() {
+  local candidate="$1" i
+  (( ${#task_bases[@]} == 0 )) && return 1
+  for i in "${!task_bases[@]}"; do
+    if [[ "${task_bases[$i]}" == "$candidate" ]]; then
+      printf '%s\n' "${task_paths[$i]}"
+      return 0
+    fi
+  done
+  return 1
 }
 
 resolve_range() {
@@ -117,6 +154,7 @@ resolve_id() {
 }
 
 any_matched=0
+had_failure=0
 for arg in "$@"; do
   case "$arg" in
     *..*)
@@ -124,15 +162,28 @@ for arg in "$@"; do
       end="${arg#*..}"
       if [[ -z "$start" || -z "$end" ]]; then
         echo "ywc-spec-writer: invalid range '$arg' (expected START..END)" >&2
+        had_failure=1
         continue
       fi
-      resolve_range "$start" "$end" && any_matched=1 || true
+      if resolve_range "$start" "$end"; then
+        any_matched=1
+      else
+        had_failure=1
+      fi
       ;;
     *\**|*\?*|*\[*)
-      resolve_glob "$arg" && any_matched=1 || true
+      if resolve_glob "$arg"; then
+        any_matched=1
+      else
+        had_failure=1
+      fi
       ;;
     *)
-      resolve_id "$arg" && any_matched=1 || true
+      if resolve_id "$arg"; then
+        any_matched=1
+      else
+        had_failure=1
+      fi
       ;;
   esac
 done
@@ -141,8 +192,16 @@ if (( ! any_matched )); then
   exit 1
 fi
 
+if (( had_failure )); then
+  exit 1
+fi
+
 # Emit deduplicated results in sorted order
-mapfile -t matched_bases < <(printf '%s\n' "${!emitted[@]}" | sort)
+matched_bases=()
+while IFS= read -r base; do
+  [[ -z "$base" ]] && continue
+  matched_bases+=("$base")
+done < <(printf '%s\n' "${emitted_bases[@]}" | sort)
 for base in "${matched_bases[@]}"; do
-  printf '%s\n' "${path_by_base[$base]}"
+  path_for_base "$base"
 done
