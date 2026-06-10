@@ -202,25 +202,44 @@ Details: [`references/html-output.md`](claude-code/skills/references/html-output
 
 ## Recommended Development Pipeline
 
+This spine mirrors how the skills are actually invoked day to day, not the full
+catalog. One planning pass, a spec gate, task decomposition, then the executor as
+the workhorse — for each task it delivers end to end via `ywc-finish-branch`,
+folding conformance review (`--review`), PR creation, bot-review handling, and
+merge in as sub-steps, so those rarely run standalone in the task-driven flow.
+
 ```
-ywc-tech-research        # (optional) research before starting
-  ↓
-ywc-plan                 # rough idea → plan.md or spec
-  ↓
-ywc-spec-writer          # write or update the spec
-  ↓
-ywc-spec-validate        # validate spec quality
-  ↓
-ywc-task-generator       # decompose spec into tasks
-  ↓
-ywc-sequential-executor  # or ywc-parallel-executor
-  ↓
-ywc-impl-review          # verify implementation
-  ↓
-ywc-gen-testcase         # generate test sheet
-  ↓
-ywc-commit → ywc-create-pr → ywc-handle-pr-reviews
+1. ywc-plan                    # rough idea → plan.md (Small) or Spec routing (Medium/Large)
+     ↓
+2. ywc-spec-writer             # write / update the spec          ┐ Medium / Large
+     ↓                                                            │ (Small skips
+   ywc-spec-validate           # gate spec quality before tasks   ┘  straight to 4)
+     ↓
+3. ywc-task-generator          # decompose spec into dependency-safe tasks
+     ↓
+4. ywc-sequential-executor 000020-010..000025-010 --review --base-branch <feature>
+     #  the workhorse — runs a task range. Each task gets its own branch and PR,
+     #  delivered end to end via ywc-finish-branch:
+     #    branch → implement → verify → impl-review (--review)
+     #    → open PR → CI → handle bot review → merge → cleanup
+     #  common flags: --base-branch · --draft · --local-merge · --review · --per-task-pr
+     #  (ywc-parallel-executor is the worktree-isolated alternative)
+     ↓
+5. ywc-gen-testcase pr <N>     # generate a QA test sheet against a task's PR
 ```
+
+**Ad-hoc / non-task changes** skip the executor and deliver manually: `ywc-create-pr` opens a
+draft PR, then `ywc-handle-pr-reviews` drives bot / human review to green. `ywc-handle-pr-reviews`
+is also what you re-run whenever new review comments land on an open PR — task-driven or not.
+
+Also reached for in real work: `ywc-ubiquitous-language` (domain glossary, before or during
+spec), and at release time `ywc-release-pr-list` + `ywc-changelog-release-notes`.
+
+The remaining skills are situational, not part of every run — `ywc-debug-rootcause` (a test
+or build fails and the cause is unclear), `ywc-tdd-ritual` (strict red-green-refactor),
+`ywc-tech-research` (compare approaches before deciding), `ywc-impl-review` (standalone
+conformance review outside the executor), `ywc-agentic` (autonomously orchestrate the whole
+pipeline from a goal), and others in the [Skills](#skills) table above.
 
 ---
 
