@@ -86,6 +86,19 @@ Before declaring the skill's task complete, verify:
 
 ---
 
+## agents/openai.yaml
+
+Create UI metadata from the final SKILL.md, not from an early draft. Keep it deterministic and include only the three default interface fields unless the user explicitly provides optional fields such as icon or brand color.
+
+```yaml
+interface:
+  display_name: "<Human-Friendly Skill Name>"
+  short_description: "<One concise sentence describing the skill>"
+  default_prompt: "Use $ywc-<name> to <canonical task the user would ask for>."
+```
+
+---
+
 ## README.md (Korean — 기본 진입 문서)
 
 ```markdown
@@ -100,8 +113,8 @@ Before declaring the skill's task complete, verify:
 
 ## 사용 방법
 
-\`\`\`bash
-/<slash-command-name> <arguments>
+\`\`\`text
+$ywc-<name> <arguments>
 \`\`\`
 
 또는 자연어로 호출:
@@ -129,24 +142,7 @@ Before declaring the skill's task complete, verify:
 
 These follow the same structure as the Korean `README.md` but in their respective languages. Always create the full locale set together so the documentation cannot drift between languages.
 
-For Korean and Japanese, **keep technical terms in English** (Database, API, Backend, etc.) per the project-wide language policy in `codex/skills/CLAUDE.md`.
-
----
-
-## agents/openai.yaml
-
-Every Codex skill must include UI metadata under `agents/openai.yaml`.
-
-```yaml
-interface:
-  display_name: "<Short human-readable name>"
-  short_description: "<One sentence describing the skill outcome>"
-  default_prompt: "Use $ywc-<name> to handle this request following the skill workflow, loading bundled references or scripts only when needed."
-```
-
-Keep this metadata aligned with `SKILL.md`. Do not add optional fields unless the repository explicitly needs them.
-
----
+For Korean and Japanese, **keep technical terms in English** (Database, API, Backend, etc.) per the project-wide language policy in the repository root `AGENTS.md` or equivalent guidance file.
 
 ## Optional: references/
 
