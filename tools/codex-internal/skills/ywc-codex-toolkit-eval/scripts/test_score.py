@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("score.py")
+EVAL_ROOT = SCRIPT.parent.parent / "evals"
 
 
 class ScoreScriptTest(unittest.TestCase):
@@ -98,6 +99,30 @@ Output: Start with Status: <DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT>
             check=False,
         )
 
+    def trigger_coverage(self) -> tuple[dict[str, dict[str, int]], list[dict[str, int | str]]]:
+        cases = json.loads((EVAL_ROOT / "trigger-cases.json").read_text(encoding="utf-8"))["cases"]
+        counts: dict[str, dict[str, int]] = {}
+        for case in cases:
+            expected = case.get("expected")
+            if isinstance(expected, str):
+                counts.setdefault(expected, {"positive": 0, "impostor": 0})
+                if case.get("kind") == "positive":
+                    counts[expected]["positive"] += 1
+            impostor = case.get("impostor")
+            if isinstance(impostor, str):
+                counts.setdefault(impostor, {"positive": 0, "impostor": 0})
+                counts[impostor]["impostor"] += 1
+        undercovered = [
+            {
+                "item": item,
+                "positive": coverage["positive"],
+                "impostor": coverage["impostor"],
+            }
+            for item, coverage in sorted(counts.items())
+            if coverage["positive"] < 3 or coverage["impostor"] < 2
+        ]
+        return counts, undercovered
+
     def test_json_marks_judgment_axes_as_partial(self) -> None:
         proc = self.run_score("--target", "all", "--format", "json")
 
@@ -113,6 +138,56 @@ Output: Start with Status: <DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT>
         self.assertIsInstance(agent["axes"]["A2"], int)
         self.assertIsNone(skill["final_total"])
         self.assertGreater(skill["mechanical_points"], 0)
+
+    def test_mode_mechanical_matches_default_shape(self) -> None:
+        default_proc = self.run_score("--target", "codex/skills", "--format", "json")
+        explicit_proc = self.run_score(
+            "--mode", "mechanical", "--target", "codex/skills", "--format", "json"
+        )
+
+        self.assertEqual(default_proc.returncode, 0, default_proc.stderr)
+        self.assertEqual(explicit_proc.returncode, 0, explicit_proc.stderr)
+        default_payload = json.loads(default_proc.stdout)
+        explicit_payload = json.loads(explicit_proc.stdout)
+        self.assertEqual(default_payload["mode"], "mechanical")
+        self.assertEqual(explicit_payload["mode"], "mechanical")
+        self.assertEqual(
+            [item["path"] for item in default_payload["roots"]["codex/skills"]],
+            [item["path"] for item in explicit_payload["roots"]["codex/skills"]],
+        )
+
+    def test_unsupported_judge_mode_fails_clearly(self) -> None:
+        proc = self.run_score("--mode", "judge", "--target", "codex/skills")
+
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("score.py only supports --mode mechanical", proc.stderr)
+        self.assertIn("judge", proc.stderr)
+
+    def test_missing_item_fails_with_item_and_target(self) -> None:
+        proc = self.run_score(
+            "--target", "codex/skills", "--item", "no-such-skill", "--format", "markdown"
+        )
+
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("no-such-skill", proc.stderr)
+        self.assertIn("codex/skills", proc.stderr)
+
+    def test_targeted_item_returns_one_skill(self) -> None:
+        proc = self.run_score(
+            "--target", "codex/skills", "--item", "ywc-example", "--format", "json"
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertEqual([item["name"] for item in payload["roots"]["codex/skills"]], ["ywc-example"])
+
+    def test_trigger_fixture_covers_internal_evaluator(self) -> None:
+        counts, undercovered = self.trigger_coverage()
+        target = counts["ywc-codex-toolkit-eval"]
+
+        self.assertIsInstance(undercovered, list)
+        self.assertGreaterEqual(target["positive"], 3, undercovered)
+        self.assertGreaterEqual(target["impostor"], 2, undercovered)
 
     def test_ci_detects_regression_without_rewriting_history(self) -> None:
         history = self.repo / "history.mechanical.json"
