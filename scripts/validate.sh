@@ -334,6 +334,109 @@ check_codex_plugin_manifest() {
   rm -rf "$tmp_dir"
 }
 
+check_release_versions() {
+  local release_manifest=".release-please-manifest.json"
+  local release_config=".release-please-config.json"
+  local expected file version required_extra_file version_file
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required to validate release versions"
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  if [ ! -f "$release_manifest" ] || [ ! -f "$release_config" ]; then
+    echo "ERROR: release-please config or manifest is missing"
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  if ! jq empty "$release_manifest" >/dev/null 2>&1; then
+    echo "ERROR: $release_manifest is not valid JSON"
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  if ! jq empty "$release_config" >/dev/null 2>&1; then
+    echo "ERROR: $release_config is not valid JSON"
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  if [ ! -f VERSION ]; then
+    echo "ERROR: VERSION is missing"
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  expected="$(jq -r '.["."] // empty' "$release_manifest")"
+  if [ -z "$expected" ]; then
+    echo "ERROR: .release-please-manifest.json is missing package version for ."
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  if ! version_file="$(tr -d '[:space:]' < VERSION)"; then
+    echo "ERROR: failed to read VERSION"
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  if [ "$version_file" != "$expected" ]; then
+    echo "ERROR: VERSION must match release-please version $expected"
+    ERRORS=$((ERRORS + 1))
+  fi
+
+  for file in \
+    plugin.json \
+    .claude-plugin/plugin.json \
+    .codex-plugin/plugin.json \
+    plugins/ywc-agent-toolkit/.codex-plugin/plugin.json
+  do
+    if [ ! -f "$file" ]; then
+      echo "ERROR: versioned manifest is missing: $file"
+      ERRORS=$((ERRORS + 1))
+      continue
+    fi
+    if ! version="$(jq -r '.version // empty' "$file" 2>/dev/null)"; then
+      echo "ERROR: versioned manifest is not valid JSON: $file"
+      ERRORS=$((ERRORS + 1))
+      continue
+    fi
+    if [ "$version" != "$expected" ]; then
+      echo "ERROR: $file version must be $expected, got $version"
+      ERRORS=$((ERRORS + 1))
+    fi
+  done
+
+  if ! version_file="$(jq -r '.packages["."]."version-file" // empty' "$release_config" 2>/dev/null)"; then
+    echo "ERROR: $release_config is not valid JSON"
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
+
+  if [ "$version_file" != "VERSION" ]; then
+    echo "ERROR: .release-please-config.json must set packages[.].version-file to VERSION"
+    ERRORS=$((ERRORS + 1))
+  fi
+
+  for required_extra_file in \
+    plugin.json \
+    .claude-plugin/plugin.json \
+    .codex-plugin/plugin.json \
+    plugins/ywc-agent-toolkit/.codex-plugin/plugin.json
+  do
+    if ! jq -e --arg path "$required_extra_file" '
+      .packages["."]."extra-files"[]
+      | select(type == "object")
+      | select(.type == "json" and .path == $path and .jsonpath == "$.version")
+    ' "$release_config" >/dev/null; then
+      echo "ERROR: .release-please-config.json extra-files must update $required_extra_file"
+      ERRORS=$((ERRORS + 1))
+    fi
+  done
+}
+
 check_codex_plugin_marketplace() {
   local marketplace=".agents/plugins/marketplace.json"
   local package_root="plugins/ywc-agent-toolkit"
@@ -576,6 +679,9 @@ check_codex_plan_handoff
 echo "==> Validating Codex plugin package..."
 check_codex_plugin_manifest
 check_codex_plugin_marketplace
+
+echo "==> Validating release versions..."
+check_release_versions
 
 echo "==> Validating codex agents..."
 check_codex_agents
