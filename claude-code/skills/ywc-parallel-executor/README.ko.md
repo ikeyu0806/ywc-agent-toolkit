@@ -2,6 +2,10 @@
 
 task-generator 가 생성한 Task 를 Agent 가 병렬로 실행하는 Skill 입니다. dependency-graph.md 를 분석하여 Wave 기반 병렬 실행 + Git Worktree 격리를 수행합니다.
 
+## Test-first, Deep Module, Critical Module Review
+
+worker payload 에 interface-first directive 와 test-first-where-feasible directive 를 주입합니다: behavior change task 는 구현 전에 실패하는 test 를 먼저 작성하고(docs/config/mechanical 은 예외), public surface 는 body 보다 먼저 설계합니다(deep module). Task 의 Ownership 이 critical path(auth, payment, crypto, PII, external input)에 해당하면 `--review` 없이도 4d 에서 `/ywc-impl-review` 와 `/ywc-security-audit` 를 강제합니다. 자세한 내용은 `../references/tdd-deep-module-gray-box.md` 를 참고하세요.
+
 ## 사용 방법
 
 ```text
@@ -75,7 +79,7 @@ wait
 
 1. dependency-graph.md 파싱
 2. Wave 계획 수립 (Topological Sort)
-3. Wave 단위 실행: Worktree 생성 → Agent 병렬 실행 → Merge → Worktree 삭제
+3. Wave 단위 실행: Worktree 생성 → Agent 병렬 실행 → 검증(Task Verify + 전체/영향범위 회귀 suite + Ownership scope gate) → Merge → Worktree 삭제
 
 ## Task → Agent 자동 매핑
 

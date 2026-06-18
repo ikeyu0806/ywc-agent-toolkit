@@ -107,3 +107,257 @@ graph LR
   K[000010-030-docs-skill-anti-triggers] --> M
   L[000010-040-refactor-parallel-executor-extraction] --> M
 ```
+
+---
+
+## Batch 4 — Codex Executor Contract-First / Test-First Skill Improvements
+
+- Spec: `docs/ywc-plans/codex-executor-tdd-deep-module-gray-box.md`
+- Granularity mode: `llm` · Language: korean
+- Starting phase: `000012` (phases `000001`–`000011` occupied by existing/completed batches)
+- Codex-only boundary: targets `codex/skills/**` source and generated plugin sync only; no `claude-code/**` edits.
+
+### Phase 000012 — Shared Contract + Skill Surface Updates
+
+| Task | Category | Depends On |
+| --- | --- | --- |
+| `000012-010-docs-shared-tdd-boundary-contract` | docs | (root) |
+| `000012-020-docs-code-gen-contract-first` | docs | `000012-010` |
+| `000012-030-docs-sequential-executor-test-first` | docs | `000012-010` |
+| `000012-040-docs-parallel-executor-contract-gates` | docs | `000012-010` |
+
+### Phase 000013 — Sync and Validation Hard Gate
+
+| Task | Category | Depends On |
+| --- | --- | --- |
+| `000013-010-infra-codex-executor-contract-validation` | infra | `000012-010`, `-020`, `-030`, `-040` |
+
+### Parallel Execution Notes (Batch 4)
+
+- Initial ready set: `000012-010-docs-shared-tdd-boundary-contract`.
+- After `000012-010` merges: `000012-020`, `000012-030`, and `000012-040` are parallel-safe because they own disjoint skill directories.
+- `000013-010` waits for all Phase 000012 tasks, then runs install scan, optional generated plugin sync, and full repository validation.
+- Conflict notes: the three skill tasks share only the new reference semantics and README localization expectations. They must not edit each other's skill directories.
+- Hard boundary: no `claude-code/**` edits in Batch 4. Generated plugin output, if needed, belongs only to `000013-010`.
+- FR mapping: FR-1→000012-010, FR-2→000012-020, FR-3→000012-030, FR-4→000012-040, FR-5→all Phase 000012 tasks, FR-6→000013-010.
+
+```mermaid
+graph LR
+  N[000012-010-docs-shared-tdd-boundary-contract] --> O[000012-020-docs-code-gen-contract-first]
+  N --> P[000012-030-docs-sequential-executor-test-first]
+  N --> Q[000012-040-docs-parallel-executor-contract-gates]
+  N --> R[000013-010-infra-codex-executor-contract-validation]
+  O --> R
+  P --> R
+  Q --> R
+```
+
+## Batch 5 — Claude Code Executor TDD / Deep Module / Gray Box Improvements
+
+- Spec: `docs/ywc-plans/claude-code-executor-tdd-deep-module-gray-box.md`
+- Granularity mode: `llm`
+- Starting phase: `000014` (phases `000001`–`000013` occupied by existing/completed batches)
+- Scope: claude-code only (the codex twin is Batch 4, phases `000012`–`000013`).
+
+### Phase 000014 — Shared Reference + Skill Surface Updates
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000014-010-docs-shared-tdd-boundary-contract` | docs | (root) |
+| `000014-020-docs-code-gen-red-gate-deep-module` | docs | `000014-010` |
+| `000014-030-docs-sequential-executor-test-first` | docs | `000014-010` |
+| `000014-040-docs-parallel-executor-contract-gates` | docs | `000014-010` |
+
+### Phase 000015 — Validation Hard Gate
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000015-010-infra-claude-executor-contract-validation` | infra | `000014-010`, `-020`, `-030`, `-040` |
+
+### Parallel Execution Notes (Batch 5)
+
+- Initial ready set: `000014-010-docs-shared-tdd-boundary-contract`.
+- After `000014-010` merges: `000014-020`, `000014-030`, `000014-040` are parallel-safe — each owns a disjoint `claude-code/skills/<skill>/` directory and only read-links the shared reference.
+- `000015-010` is a **hard gate**: it waits for all four Phase 000014 tasks, then runs install scan + `scripts/validate.sh` + markdownlint and asserts the claude-code-only boundary.
+- Hard boundary: no `codex/**` or `plugins/**` edits in Batch 5. The TDD-default divergence from Batch 4 (codex) is intentional and recorded in the spec.
+- FR mapping: FR-1→000014-010, FR-2→000014-020, FR-3→000014-030, FR-4→000014-040, FR-5→all Phase 000014 tasks, FR-6→000015-010.
+
+```mermaid
+graph LR
+  S[000014-010-docs-shared-tdd-boundary-contract] --> T[000014-020-docs-code-gen-red-gate-deep-module]
+  S --> U[000014-030-docs-sequential-executor-test-first]
+  S --> V[000014-040-docs-parallel-executor-contract-gates]
+  S --> W[000015-010-infra-claude-executor-contract-validation]
+  T --> W
+  U --> W
+  V --> W
+```
+
+---
+
+## Batch 6 — Codex Karpathy Guideline Integration
+
+- Spec: `docs/ywc-plans/codex-karpathy-guideline-integration.md`
+- Granularity mode: `llm` · Language: korean
+- Starting phase: `000016` (phases `000001`–`000015` occupied by existing/completed batches)
+- Scope: Codex skills and Codex custom agents only. Generated plugin package updates happen only through `bash scripts/sync-codex-plugin.sh`.
+- Advisor pass: skipped because current tool policy allows subagent spawning only when the user explicitly requests delegation/subagents; local Pattern C phase review was applied instead.
+
+### Phase 000016 — Source Guidance Updates
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000016-010-docs-principles-guideline-gap` | docs | (root) |
+| `000016-020-docs-code-gen-worker-discipline` | docs | `000016-010` |
+| `000016-030-docs-task-template-goal-verification` | docs | `000016-010` |
+| `000016-040-docs-skill-author-future-proofing` | docs | `000016-010` |
+| `000016-050-docs-custom-agent-bounded-evidence` | docs | `000016-010` |
+
+### Phase 000017 — Sync and Validation Hard Gate
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000017-010-infra-codex-karpathy-validation` | infra | `000016-010`, `-020`, `-030`, `-040`, `-050` |
+
+### Parallel Execution Notes (Batch 6)
+
+- Initial ready set: `000016-010-docs-principles-guideline-gap`.
+- After `000016-010` merges: `000016-020`, `000016-030`, `000016-040`, and `000016-050` are parallel-safe because they own disjoint source areas.
+- `000017-010` is a hard gate. It waits for all Phase `000016` tasks, then runs plugin sync, full repository validation, Codex skill list, Codex agent list, targeted `rg`, and final diff scope checks.
+- Conflict notes: `000016-020`, `000016-030`, and `000016-040` may each edit skill-local evals but not each other's skill directories. `000016-050` edits `codex/agents/**`, which is not synced into the plugin package.
+- Hard boundary: no `claude-code/**` edits, no new `karpathy-*` skill/agent, and no manual edits to `plugins/ywc-agent-toolkit/skills/**`.
+- FR mapping: FR-1→000016-010, FR-2→000016-020, FR-3→000016-030, FR-4→000016-040, FR-5→000016-050, FR-6→000016-020/030/040, FR-7→000017-010.
+
+```mermaid
+graph LR
+  X[000016-010-docs-principles-guideline-gap] --> Y[000016-020-docs-code-gen-worker-discipline]
+  X --> Z[000016-030-docs-task-template-goal-verification]
+  X --> AA[000016-040-docs-skill-author-future-proofing]
+  X --> AB[000016-050-docs-custom-agent-bounded-evidence]
+  X --> AC[000017-010-infra-codex-karpathy-validation]
+  Y --> AC
+  Z --> AC
+  AA --> AC
+  AB --> AC
+```
+
+## Batch 7
+
+- Spec: `docs/ywc-plans/claude-code-karpathy-guideline-integration.md` (DONE after spec-ready Iteration 2; Operative Sections → §Iteration 1 Amendments §A10)
+- Granularity mode: `llm`
+- Starting phase: `000018`
+- Rationale: Codex Karpathy batch occupies `000016-010..050` + `000017-010` (active). Claude Code batch starts at `000018` to avoid collision.
+- Scope: Claude Code skills/agents only. No `codex/**`, no product code, no new `karpathy-*` skill/agent.
+
+### Phase 000018 — Karpathy Discipline Integration (foundation + parallel per-skill)
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000018-010-docs-principles-foundation` | docs | (root) |
+| `000018-020-docs-planning-discipline` | docs | `000018-010` |
+| `000018-030-docs-task-generator-goal-evals` | docs | `000018-010` |
+| `000018-040-docs-surgical-simplicity-detection` | docs | `000018-010` |
+| `000018-050-docs-execution-discipline` | docs | `000018-010` |
+
+### Phase 000019 — Validation Hard Gate
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000019-010-infra-karpathy-validation` | infra | `000018-010`, `-020`, `-030`, `-040`, `-050` |
+
+### Parallel Execution Notes (Batch 7)
+
+- Initial ready set: `000018-010-docs-principles-foundation` (foundation; establishes canonical principle names in `references/principles.md`).
+- After `000018-010` merges: `000018-020`, `000018-030`, `000018-040`, `000018-050` are parallel-safe — disjoint Ownership across distinct skill/agent subtrees.
+- `000019-010` is a hard gate: waits for all Phase `000018`, then runs the §A5 extended `rg`, `validate.sh`, `install.sh --list --cc`, `--list --cc-agents`, and the `git diff --name-only` scope-boundary check.
+- Conflict notes: the four Phase 000018 parallel tasks own disjoint areas — 020 owns spec-validate/plan/spec-writer; 030 owns task-generator (incl. evals); 040 owns impl-review + 3 language reviewers + code-gen; 050 owns parallel/sequential executors + debug-rootcause + root-cause-analyst. None overlaps. All four only *read* `references/principles.md` (edited solely by 010).
+- Hard boundary: no `codex/**` edits, no new `karpathy-*` skill/agent, README sync only for the §A7 user-surface list (task-generator, spec-validate, plan, spec-writer, parallel-executor, code-gen).
+- FR mapping: FR-1→000018-010, FR-2/FR-3→000018-020, FR-4/FR-12→000018-030, FR-5/FR-7→000018-040, FR-6/FR-8/FR-9/FR-10→000018-050, FR-11→000019-010.
+
+```mermaid
+graph LR
+  P[000018-010-docs-principles-foundation] --> Q[000018-020-docs-planning-discipline]
+  P --> R[000018-030-docs-task-generator-goal-evals]
+  P --> S[000018-040-docs-surgical-simplicity-detection]
+  P --> T[000018-050-docs-execution-discipline]
+  P --> G[000019-010-infra-karpathy-validation]
+  Q --> G
+  R --> G
+  S --> G
+  T --> G
+```
+
+---
+
+## Batch 8 — Codex Eval Quality Improvement Cycle
+
+- Spec: `docs/ywc-plans/codex-eval-quality-improvement-cycle.md`
+- Granularity mode: `llm`
+- Starting phase: `000020`
+- Scope: Codex eval report/scoreboard, selected Codex skill wording/eval fixtures, Codex agent A8 evidence strategy, generated plugin sync and validation.
+- Hard boundary: no `.claude/**`, no `claude-code/**`, no product code, no dependency churn, and no manual edits to generated plugin output before `bash scripts/sync-codex-plugin.sh`.
+
+### Phase 000020 — Evidence and Targeted Quality Improvements
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000020-010-docs-codex-eval-judgment-report` | docs | (root) |
+| `000020-020-docs-codex-eval-scoreboard-update` | docs | `000020-010` |
+| `000020-030-docs-runtime-fit-wording-polish` | docs | `000020-010` |
+| `000020-040-test-eval-fixture-coverage` | test | `000020-010` |
+| `000020-050-docs-agent-behavioral-evidence` | docs | `000020-010` |
+
+### Phase 000021 — Sync and Validation Hard Gate
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000021-010-infra-codex-eval-sync-validation` | infra | `000020-010`, `-020`, `-030`, `-040`, `-050` |
+
+### Parallel Execution Notes (Batch 8)
+
+- Initial ready set: `000020-010-docs-codex-eval-judgment-report`.
+- After `000020-010` merges: `000020-020`, `000020-030`, `000020-040`, and `000020-050` are parallel-safe by primary ownership, with the caveat that `000020-040` and `000020-050` may append bounded notes to the 2026-06-18 report and must merge after the report exists.
+- `000020-030` and `000020-040` may both touch the `ywc-finish-branch` skill directory, but they own different files (`SKILL.md` vs `evals/evals.json`).
+- `000021-010` is a hard gate: it waits for all Phase `000020` tasks, then runs plugin sync, repository validation, Codex install scans, evaluator CI, and final diff scope checks.
+- FR mapping: FR-1→000020-010, FR-2→000020-020, FR-3→000020-030, FR-4→000020-040, FR-5→000020-050, FR-6→000021-010.
+
+```mermaid
+graph LR
+  A[000020-010-docs-codex-eval-judgment-report] --> B[000020-020-docs-codex-eval-scoreboard-update]
+  A --> C[000020-030-docs-runtime-fit-wording-polish]
+  A --> D[000020-040-test-eval-fixture-coverage]
+  A --> E[000020-050-docs-agent-behavioral-evidence]
+  A --> F[000021-010-infra-codex-eval-sync-validation]
+  B --> F
+  C --> F
+  D --> F
+  E --> F
+```
+
+---
+
+## Batch 9 — Toolkit-Eval Mechanical-Tier Fixes
+
+- Spec: `plan.md` (converged via ywc-spec-ready, DONE; see `## Iteration 1 Amendments`)
+- Granularity mode: `llm`
+- Starting phase: `000022`
+- Scope: 3 confirmed mechanical-tier skill defects (ywc-commit A4, ywc-spec-validate A2, ywc-gen-testcase A8) + eval baseline regeneration. Bundled as one llm vertical slice.
+- Hard boundary: only the 3 named distributed skills + their references + `history.mechanical.json`; no other skills, no product code.
+
+### Phase 000022 — Mechanical Findings + Baseline
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000022-010-docs-toolkit-eval-mechanical-fixes` | docs | (root) |
+
+- FR mapping: FR1→ywc-commit A4, FR2→ywc-spec-validate A2, FR3→ywc-gen-testcase A8 extraction, FR4→baseline regen (intra-task final step, depends on FR1–FR3).
+
+### Parallel Execution Notes (Batch 9)
+
+- Single task, single phase — no intra-batch parallelism. FR4's dependency on FR1–FR3 is handled as ordered steps inside the task.
+- Independent of Batch 8 (000020–000021): that batch's hard boundary excludes `.claude/**` and `claude-code/**`, so no shared-surface conflict on `history.mechanical.json` in practice.
+
+```mermaid
+graph LR
+  G[000022-010-docs-toolkit-eval-mechanical-fixes]
+```

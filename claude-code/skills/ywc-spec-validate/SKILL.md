@@ -1,7 +1,7 @@
 ---
 name: ywc-spec-validate
 version: 1.0.0
-description: (ywc) Use after writing a specification and before task decomposition, when the user wants to validate spec completeness, consistency, feasibility, or readiness for implementation. Triggers: "사양 검토", "spec review", "사양 리뷰", "review specification", "스펙 점검", "check the spec", "is this spec complete", "仕様レビュー". Do not use for code-level review (use ywc-impl-review), product/business review (use ywc-product-review), or when no specification document exists yet.
+description: (ywc) Use when a specification has been written and before task decomposition, and the user wants to validate spec completeness, consistency, feasibility, or readiness for implementation. Triggers: "사양 검토", "spec review", "사양 리뷰", "review specification", "스펙 점검", "check the spec", "is this spec complete", "仕様レビュー". Do not use for code-level review (use ywc-impl-review), product/business review (use ywc-product-review), or when no specification document exists yet.
 category: spec
 phase: planning
 requires: []
@@ -25,6 +25,7 @@ When tempted to skip a step, check this table first:
 | "User wrote the spec, do not push back too hard" | Honest review prevents implementation rework. Soften tone, never soften findings. |
 | "Spec uses internal jargon, infer the intent" | If a term is undefined, that is a completeness gap. Flag it. |
 | "Architecture decision is implicit, do not flag it" | Implicit ≠ specified. Surface implicit assumptions for explicit confirmation. |
+| "Spec follows best practices, so complexity is fine" | The 4 base dimensions catch what is *missing* or *conflicting*, never what is *excessive*. Abstraction, configurability, or generality the stated scope does not yet require is over-engineering — surface it as a Simplicity Warning. Would a senior engineer call this spec overbuilt? |
 | "The spec contradicts CLAUDE.md, follow the spec" | Surface the conflict. Do not silently let the spec override project rules. |
 | "4-dimension review is fast enough sequentially" | Phase 1 fan-out cuts latency on large specs; each Sonnet subagent handles one dimension, reducing per-call context and preventing cross-dimension finding contamination. |
 
@@ -75,7 +76,7 @@ When tempted to skip a step, check this table first:
    |---|---|---|---|
    | Completeness | sonnet | Completeness | Missing required items, edge cases, pagination |
    | Consistency | sonnet | Consistency | Terminology mismatches; Synonyms-to-Avoid violations |
-   | Feasibility | sonnet | Feasibility | Implementable with current stack and dependencies |
+   | Feasibility | sonnet | Feasibility + Simplicity | Implementable with current stack and dependencies; also flag over-engineering — abstraction, configurability, or generality the stated scope does not yet require (surface as Warning) |
    | Code Compatibility | sonnet | Code Compatibility | Conflicts with existing schema, API routes, type definitions |
 
    Each subagent returns:
@@ -98,6 +99,7 @@ When tempted to skip a step, check this table first:
 | Consistency | Terminology, format, or data structure mismatches across documents; spec terms appearing in the "Synonyms to Avoid" column of `docs/ubiquitous-language.md` |
 | Feasibility | Whether the spec can be implemented with the current stack |
 | Code Compatibility | Conflicts with existing DB schema, API route patterns |
+| Simplicity | Whether the spec specifies abstraction, configurability, or generality the stated scope does not yet require (over-engineering). Assessed within the Feasibility pass — surface speculative scope as a Warning, not a separate subagent. |
 
 ## Output Format
 
