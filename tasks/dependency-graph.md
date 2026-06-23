@@ -361,3 +361,96 @@ graph LR
 graph LR
   G[000022-010-docs-toolkit-eval-mechanical-fixes]
 ```
+
+---
+
+## Batch 10 — Codex Agent and Skill Eval Harness Improvements
+
+- Spec: `docs/ywc-plans/codex-agent-skill-eval-harness-improvements.md`
+- Spec ready log: `docs/ywc-plans/codex-agent-skill-eval-harness-improvements.spec-ready-log.md`
+- Granularity mode: `llm` · Language: english
+- Starting phase: `000023`
+- Scope: Codex custom-agent smoke harness/evidence, missing Codex skill eval fixtures, selected Codex skill output-contract/progressive-disclosure cleanup, final Codex evaluation report and scoreboard update.
+- Hard boundary: no Claude Code skills or agents, no product code, no dependency churn, no live LLM/API/runtime invocation from the validator, and no manual edits to generated plugin output before `bash scripts/sync-codex-plugin.sh`.
+- Advisor pass: skipped. The skill's Pattern C advisor is optional, and current tool policy allows sub-agent spawning only when the user explicitly requests delegation/subagents; local phase-boundary review was applied instead.
+
+### Phase 000023 — Harness, Evidence, Fixtures, and Skill Contracts
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000023-010-infra-agent-smoke-harness` | infra | (root) |
+| `000023-020-test-agent-smoke-evidence` | test | `000023-010` |
+| `000023-030-test-skill-eval-fixtures` | test | (root) |
+| `000023-040-docs-codex-skill-contracts` | docs | `000023-030` |
+
+### Phase 000024 — Final Evaluation Publication
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000024-010-docs-eval-report-scoreboard` | docs | `000023-010`, `000023-020`, `000023-030`, `000023-040` |
+
+### Parallel Execution Notes (Batch 10)
+
+- Initial ready set: `000023-010-infra-agent-smoke-harness`, `000023-030-test-skill-eval-fixtures`.
+- After `000023-010` merges: `000023-020-test-agent-smoke-evidence` becomes runnable.
+- After `000023-030` merges: `000023-040-docs-codex-skill-contracts` becomes runnable.
+- `000023-030` and `000023-040` must not run in parallel because both touch Codex skill source directories and generated plugin sync surfaces.
+- `000023-010` and `000023-030` are parallel-safe: the former owns internal evaluator scripts; the latter owns selected skill eval files and generated counterparts.
+- `000023-020` and `000023-040` are parallel-safe after their respective predecessors merge: one owns agent smoke fixture/output evidence, the other owns Codex skill contract/progressive-disclosure edits.
+- Phase `000024` is a hard gate. `000024-010` starts only after all Phase `000023` tasks are complete, because report and scoreboard movement require the full evidence set.
+- FR mapping: FR-1/FR-3/FR-4/FR-5→`000023-010`, FR-1/FR-2→`000023-020`, FR-6→`000023-030`, FR-7/FR-8→`000023-040`, FR-9/FR-10→`000024-010`.
+
+```mermaid
+graph LR
+  A[000023-010-infra-agent-smoke-harness] --> B[000023-020-test-agent-smoke-evidence]
+  C[000023-030-test-skill-eval-fixtures] --> D[000023-040-docs-codex-skill-contracts]
+  A --> E[000024-010-docs-eval-report-scoreboard]
+  B --> E
+  C --> E
+  D --> E
+```
+
+---
+
+## Batch 11 — Tier 2: Harness-Feedback Loop & Mission Persistence
+
+- Spec: `docs/ywc-plans/tier2-harness-feedback-and-mission-persistence.md`
+- Spec ready log: `docs/ywc-plans/tier2-harness-feedback-and-mission-persistence.spec-ready-log.md`
+- Granularity mode: `llm` · Language: english · Starting phase: `000025`
+- Scope: harness-improvement feedback loop (debug-rootcause / incident-postmortem emit systemic-prevention into ywc-review-learnings via `--source debug|incident`) and stateful mission persistence (new `ywc-project-mission` skill + `docs/project-mission.md`, read by ywc-plan, written from ywc-brainstorm).
+- Hard boundary: claude-code bundle only (no codex mirroring), markdown skill/doc edits only (no product code, no DB migration, no library introduction), propose+1-confirm apply mode.
+- Advisor pass: skipped (Pattern C optional; phase boundary obvious, exactly two feature areas).
+- No-AC requirements: none — every FR has a backing Acceptance Criterion.
+
+### Phase 000025 — Foundations + Consumer Integrations (intra-phase deps via Depends On)
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000025-010-docs-review-learnings-prevention-sources` | docs | (root) |
+| `000025-020-docs-project-mission-skill` | docs | (root) |
+| `000025-030-docs-rootcause-postmortem-prevention-emit` | docs | `000025-010` |
+| `000025-040-docs-mission-brainstorm-plan-integration` | docs | `000025-020` |
+
+### Phase 000026 — Catalog & Conventions Finalization (hard gate)
+
+| Task | Category | Depends On |
+|---|---|---|
+| `000026-010-docs-catalog-claude-md-integration` | docs | `000025-010`, `000025-020`, `000025-030`, `000025-040` |
+
+### Parallel Execution Notes (Batch 11)
+
+- Initial ready set: `000025-010` and `000025-020` — disjoint ownership, parallel-safe.
+- `000025-030` runnable after `000025-010` merges (needs `--source debug|incident`); `000025-040` runnable after `000025-020` merges (needs `ywc-project-mission`). `000025-030` and `000025-040` are parallel-safe (disjoint ownership).
+- Phase-gate placement: `000025-030`/`000025-040` each depend on only ONE Phase 000025 task, so per the phase-gate rule they live in Phase 000025 (ordered via Depends On), not a separate phase.
+- Phase `000026` is a true hard gate: `000026-010` edits shared `claude-code/skills/README.md` + `CLAUDE.md` and starts only after ALL Phase 000025 tasks merge.
+- FR mapping: FR3→`000025-010`, FR4→`000025-020`, FR1/FR2→`000025-030`, FR5/FR6→`000025-040`, FR7/AC11→`000026-010`.
+
+```mermaid
+graph LR
+  A[000025-010-review-learnings-prevention-sources] --> C[000025-030-rootcause-postmortem-prevention-emit]
+  B[000025-020-project-mission-skill] --> D[000025-040-mission-brainstorm-plan-integration]
+  A --> E[000026-010-catalog-claude-md-integration]
+  B --> E
+  C --> E
+  D --> E
+```
