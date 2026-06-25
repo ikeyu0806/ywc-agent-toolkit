@@ -71,8 +71,17 @@ jq -n \
   --argjson issue_comments "$ISSUE_COMMENTS_JSON" \
   --argjson reviews "$REVIEWS_JSON" \
   --argjson pr "$PR_JSON" '
-  def marker_re: "<!--\\s*<review_comment_addressed:[^>]+>\\s*-->";
+  def marker_re: "<!--\\s*<review_comment_addressed(:[^>]+)?>\\s*-->";
+  def marker_fingerprint_re: "<!--\\s*<review_comment_addressed:(?<fingerprint>[^>]+)>\\s*-->";
   def fingerprint($prefix; $id): "\($prefix)-\($id)";
+  def addressed_fingerprints:
+    [
+      ($issue_comments // [])[]
+      | (.body // "" | match(marker_fingerprint_re; "g").captures[])
+      | select(.name == "fingerprint")
+      | .string
+    ];
+  def is_addressed($fingerprint): (addressed_fingerprints | index($fingerprint)) != null;
 
   def review_threads:
     ($comments // [])
@@ -82,19 +91,23 @@ jq -n \
         | {
             comments: .,
             root: .[0],
-            addressed: (map(.body // "") | any(test(marker_re))),
-            my_replies: (map(select(.user.login == $me)) | sort_by(.created_at)),
-            reviewer_comments: (map(select(.user.login != $me)) | sort_by(.created_at))
+            latest_reviewer_comment: (
+              map(select(.user.login != $me and (((.body // "") | test(marker_re)) | not)))
+              | sort_by(.created_at)
+              | last
+            ),
+            latest_self_response: (
+              map(select(.user.login == $me or ((.body // "") | test(marker_re))))
+              | sort_by(.created_at)
+              | last
+            )
           }
       )
     | map(select(
-        .addressed == false
+        .latest_reviewer_comment != null
         and (
-          (.my_replies | length) == 0
-          or (
-            (.reviewer_comments | length) > 0
-            and (.my_replies | last | .created_at) < (.reviewer_comments | last | .created_at)
-          )
+          .latest_self_response == null
+          or .latest_self_response.created_at < .latest_reviewer_comment.created_at
         )
       ))
     | map({
@@ -102,18 +115,19 @@ jq -n \
         fingerprint: fingerprint("review_thread"; .root.id),
         reply_api: "review_comment_reply",
         id: .root.id,
-        in_reply_to_id: .root.in_reply_to_id,
-        body: .root.body,
-        path: .root.path,
-        line: (.root.line // .root.original_line),
-        user: .root.user.login,
+        in_reply_to_id: .root.id,
+        body: .latest_reviewer_comment.body,
+        path: .latest_reviewer_comment.path,
+        line: (.latest_reviewer_comment.line // .latest_reviewer_comment.original_line),
+        user: .latest_reviewer_comment.user.login,
         state: "unresolved",
-        created_at: .root.created_at,
+        created_at: .latest_reviewer_comment.created_at,
         thread_comment_count: (.comments | length)
       });
 
   def pr_comments:
     ($issue_comments // [])
+    | map(select(.user.login != $me))
     | map(select((.body // "" | test(marker_re)) | not))
     | map({
         artifact_type: "pr_comment",
@@ -126,11 +140,13 @@ jq -n \
         user: .user.login,
         state: "open",
         created_at: .created_at
-      });
+      })
+    | map(select((is_addressed(.fingerprint)) | not));
 
   def review_submissions:
     ($reviews // [])
     | map(select((.body // "") != "" and (.state | IN("COMMENTED", "CHANGES_REQUESTED"))))
+    | map(select(.user.login != $me))
     | map(select((.body // "" | test(marker_re)) | not))
     | map({
         artifact_type: "review_submission",
@@ -143,11 +159,12 @@ jq -n \
         user: .user.login,
         state: .state,
         created_at: .submitted_at
-      });
+      })
+    | map(select((is_addressed(.fingerprint)) | not));
 
   def status_checks:
     ($pr.statusCheckRollup // [])
-    | map(select((.conclusion // .status // "") | IN("SUCCESS", "COMPLETED", "SKIPPED", "NEUTRAL") | not))
+    | map(select((.conclusion // .status // .state // "") | IN("SUCCESS", "COMPLETED", "SKIPPED", "NEUTRAL") | not))
     | map({
         artifact_type: "status_check",
         fingerprint: fingerprint("status_check"; (.name // .workflowName // .context // "unknown")),
@@ -157,7 +174,7 @@ jq -n \
         path: null,
         line: null,
         user: "github",
-        state: (.conclusion // .status // "UNKNOWN"),
+        state: (.conclusion // .status // .state // "UNKNOWN"),
         details_url: (.detailsUrl // .targetUrl // null)
       });
 
