@@ -292,12 +292,10 @@ Next: implement directly, or run /ywc-code-gen, or /ywc-sequential-executor
 
 **Medium/Large path handoff:**
 
+Output this block first:
+
 ```text
 ✅ Spec drafted: <path>
-Next:
-  1. /ywc-spec-validate --spec <path>
-  2. (after review passes) /ywc-task-generator <path>
-  3. (after tasks generated) /ywc-sequential-executor or /ywc-parallel-executor
 ```
 
 **Optional: mission write-back (AC14).** A plan *finalizes* a durable success criterion when it reaches this Step 5 handoff carrying **≥1 new durable success criterion** — a measurable, project-level done-condition that is not already present in `docs/project-mission.md` (a feature-only, throwaway done-condition does not count). When that holds, offer **once** to persist it:
@@ -309,7 +307,19 @@ This plan finalized N new durable success criterion(s). Add to docs/project-miss
 
 On acceptance, invoke `ywc-project-mission --mode update --source plan` (its CHANGESET confirmation gate still applies). On decline or silence, it is a clean no-op — never write the mission file unasked, and never block the handoff on the answer. Skip the offer entirely when the plan introduces no new durable criterion (the common case for small/feature plans).
 
-Never proceed past the handoff. The user decides which downstream skill runs next — this skill is the planner, not the executor.
+Then ask the user (skip when `--non-interactive` is set):
+
+> The spec draft is complete. Run `ywc-spec-ready` to drive the validate → converge loop (validate → DONE) automatically?
+> - **y** → run `/ywc-spec-ready <path>` now.
+> - **n** → proceed manually with the steps below:
+>   1. `/ywc-spec-validate --spec <path>`
+>   2. (after review passes) `/ywc-task-generator <path>`
+>   3. (after tasks are generated) `/ywc-sequential-executor` or `/ywc-parallel-executor`
+
+If the user responds **y** (or equivalent affirmative), invoke `ywc-spec-ready <path>` immediately.
+If the user responds **n**, skips the prompt, or `--non-interactive` is set, do not proceed further — the three manual steps above are the guide.
+
+The `ywc-spec-ready` prompt is an opt-in shortcut, not automatic execution. The user decides the next action — this skill is the planner, not the executor.
 
 ## Output Format
 
@@ -343,7 +353,7 @@ Before declaring the skill's task complete, verify:
 - [ ] Output file written at a concrete path (no `<placeholder>` slugs)
 - [ ] Out of Scope is non-empty (use `N/A — none identified` if truly none)
 - [ ] Handoff message printed verbatim with the file path filled in
-- [ ] Did not execute the next downstream skill — handoff stops at instruction
+- [ ] Did not auto-execute downstream — invoked `ywc-spec-ready` **only** on an explicit **y**; for an **n** answer, a skipped prompt, or `--non-interactive`, ran no downstream skill at all
 
 ## Common Mistakes
 
@@ -357,6 +367,6 @@ Before declaring the skill's task complete, verify:
 
 - **Upstream**: `ywc-tech-research` (when technology choice is unsettled before planning)
 - **Downstream (Small path)**: `ywc-code-gen`, `ywc-sequential-executor`
-- **Downstream (Medium/Large path)**: `ywc-spec-validate` → `ywc-task-generator` → `ywc-sequential-executor` / `ywc-parallel-executor`
+- **Downstream (Medium/Large path)**: `ywc-spec-ready` (auto-converge shortcut) or `ywc-spec-validate` → `ywc-task-generator` → `ywc-sequential-executor` / `ywc-parallel-executor`
 - **Pairs with**: `ywc-product-review` (run before `ywc-plan` when business framing is unclear), `ywc-project-docs` (run after if `docs/` set is missing)
 - **Reads / writes-back**: `ywc-project-mission` — Step 1 reads `docs/project-mission.md` (best-effort) to frame clarification and seed Acceptance Criteria; Step 5 offers an opt-in `update --source plan` write-back when the plan finalizes ≥1 new durable success criterion. Both are no-ops on absence / decline (NFR2).
