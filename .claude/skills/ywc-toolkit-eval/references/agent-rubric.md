@@ -1,6 +1,6 @@
 # Agent Rubric — 0–5 Banding per Axis
 
-Claude Code custom agents (`claude-code/agents/ywc-*.md`) are evaluated on a **different** axis set than skills: an agent has no README locale set, but it has a tool grant, a model assignment, and a return contract that skills lack. Codex TOML agents are evaluated separately by `tools/codex-internal/skills/ywc-codex-toolkit-eval`.
+Claude Code custom agents (`claude-code/agents/ywc-*.md`) are evaluated on a **different** axis set than skills: an agent has no README locale set, but it has a tool grant, a model assignment, and a return contract that skills lack. Codex TOML agents are evaluated separately by `.codex/skills/ywc-codex-toolkit-eval`.
 
 | Axis | Weight | Tier |
 |---|---|---|
@@ -55,6 +55,8 @@ Mechanical. Least privilege. Parse the agent's tool grant.
 | 0 | A reviewer/analyst agent can write to the repo with no contract forbidding it. |
 
 Heuristic: if the agent name or description contains `review`, `audit`, `analyst`, or "read-only", the presence of `Write`/`Edit`/`NotebookEdit` in the grant drops A3 to ≤3.
+
+Mechanical default (`score.py`, `a3_tool_band`): `*` → 1; a read-only-by-role agent holding any mutating tool → 3; **every other bounded, explicit grant → 5**. An implementer agent (coder / worker) legitimately needs `Write`/`Edit`/`Bash`, so a bounded mutating grant on a non-read-only role is minimal-for-role and scores 5 — it is NOT capped at 4. The mechanical tier cannot distinguish "exactly needed" (5) from "one tool broader than needed" (4) without role knowledge; it defaults to 5 and the judgment tier demotes to 4 only when it identifies a specific unused/extraneous tool.
 
 ## A4 — Output-Contract Compliance (weight 15)
 
