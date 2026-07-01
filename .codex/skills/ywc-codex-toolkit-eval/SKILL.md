@@ -1,25 +1,26 @@
 ---
 name: ywc-codex-toolkit-eval
 description: >-
-  (ywc) Use when evaluating, scoring, auditing, or improving this repository's
-  Codex ywc-* skills and Codex custom agents as a repeatable maintenance cycle.
+  (ywc) Use when evaluating, scoring, auditing, or producing a prioritized
+  improvement backlog for this repository's Codex ywc-* skills and Codex custom
+  agents as a repeatable maintenance cycle.
   Triggers: "Codex skill 평가", "Codex agent 평가", "Codex 평가 기준",
   "codex toolkit 평가해줘", "skill/agent 개선 cycle", "evaluate Codex skills",
   "score Codex agents", "Codex skill maturity", "Codex scoreboard",
   "Codex スキル評価", "Codex エージェント評価". Do not use for Claude Code
   skill/agent evaluation (use .claude/skills/ywc-toolkit-eval), for authoring
-  a distributable ywc-* skill directly (use ywc-skill-author), for binary
-  validation only (use scripts/validate.sh), or for application code review
-  (use ywc-impl-review).
+  or directly editing a distributable ywc-* skill (use ywc-skill-author), for
+  binary validation only (use scripts/validate.sh), or for application code
+  review (use ywc-impl-review).
 ---
 
 # ywc-codex-toolkit-eval
 
 **Announce at start:** "I'm using the ywc-codex-toolkit-eval skill to evaluate this repository's Codex skills and agents."
 
-This internal skill runs a Codex-only evaluate -> improve cycle over
+This local Codex skill runs a Codex-only evaluate -> improve cycle over
 `codex/skills/*` and `codex/agents/*.toml`. It must stay under
-`tools/codex-internal/skills/` and must not be copied into `codex/skills/` or
+`.codex/skills/` and must not be copied into `codex/skills/` or
 `.codex-plugin/skills/`.
 
 ## Boundary
@@ -39,7 +40,7 @@ When tempted to bypass a rule, check this table first:
 |---|---|
 | "scripts/validate.sh is green, so the Codex bundle is healthy" | Validation proves structure and packaging only. Trigger precision, workflow actionability, runtime fit, and behavioral evidence still need graded evaluation. |
 | "The Claude evaluator already scores Codex paths, so keep using it" | Claude Code and Codex have different frontmatter schemas, agent formats, install paths, and runtime assumptions. Shared concepts are acceptable; shared target roots are not. |
-| "Internal tools can live under codex/skills if we remember not to publish them" | `codex/skills` and `.codex-plugin/skills` are distribution surfaces. Internal evaluators there will leak into installs or plugin packaging. |
+| "Local evaluator skills can live under codex/skills if we remember not to publish them" | `codex/skills` and `.codex-plugin/skills` are distribution surfaces. Evaluators there will leak into installs or plugin packaging. |
 | "Mechanical score is enough" | Mechanical axes are partial evidence. Judgment axes such as trigger precision, workflow actionability, scope discipline, mission boundaries, and behavioral evidence still decide the grade. |
 | "No eval fixtures means no score" | Score from available evidence and mark uncertainty. Missing fixtures are themselves a quality signal. |
 | "Fix every issue while evaluating" | Evaluation produces an evidence-ranked backlog. Implement fixes through `ywc-skill-author`, Codex agent authoring, or bundle docs work, then re-score. |
@@ -57,6 +58,23 @@ When tempted to bypass a rule, check this table first:
 | `--ci` | flag | `--ci` | Compare deterministic axes against `evals/history.mechanical.json` without rewriting it. |
 | `--update-baseline` | flag | `--update-baseline` | Write the reviewed current mechanical baseline after checking the markdown output. |
 | `--only` | `--only <scope>` | `--only agents` | Inventory gate scope: `skills`, `agents`, or all. |
+
+## Argument Mapping
+
+Map user arguments to concrete commands before running the workflow:
+
+| User request | Inventory command | Mechanical command |
+|---|---|---|
+| `--target all` or no target | `inventory_gate.py --json` | `score.py --mode mechanical --target all --format markdown` |
+| `--target codex/skills` | `inventory_gate.py --json --only skills` | `score.py --mode mechanical --target codex/skills --format markdown` |
+| `--target codex/agents` | `inventory_gate.py --json --only agents` | `score.py --mode mechanical --target codex/agents --format markdown` |
+| `--item <name>` | run the matching inventory scope for context | add `--item <name>` to `score.py` and score only that asset in the judgment pass |
+| `--ci` | optional unless a full report is requested | `score.py --ci` |
+| `--update-baseline` | optional unless reviewing current structure | `score.py --update-baseline` after reviewing markdown output |
+
+Direct `score.py` runs support mechanical mode only. For `--mode judge` or
+`--mode full`, use the mechanical output plus the rubric references to complete
+the judgment pass.
 
 ## Scoring Model
 
@@ -87,7 +105,7 @@ Agent judgment axes: A1 routing description, A3 mission and boundaries, and A8 b
 Run from the repository root:
 
 ```bash
-python3 tools/codex-internal/skills/ywc-codex-toolkit-eval/scripts/inventory_gate.py --json
+python3 .codex/skills/ywc-codex-toolkit-eval/scripts/inventory_gate.py --json
 ```
 
 Use the JSON as evidence. Do not re-derive body line counts, missing README
@@ -98,19 +116,19 @@ locale files, missing `agents/openai.yaml`, or TOML key presence by memory.
 Run the deterministic scorecard:
 
 ```bash
-python3 tools/codex-internal/skills/ywc-codex-toolkit-eval/scripts/score.py --mode mechanical --format markdown
+python3 .codex/skills/ywc-codex-toolkit-eval/scripts/score.py --mode mechanical --format markdown
 ```
 
 For CI or pre-PR regression checks:
 
 ```bash
-python3 tools/codex-internal/skills/ywc-codex-toolkit-eval/scripts/score.py --ci
+python3 .codex/skills/ywc-codex-toolkit-eval/scripts/score.py --ci
 ```
 
 If the current mechanical scores are intentionally the new baseline:
 
 ```bash
-python3 tools/codex-internal/skills/ywc-codex-toolkit-eval/scripts/score.py --update-baseline
+python3 .codex/skills/ywc-codex-toolkit-eval/scripts/score.py --update-baseline
 ```
 
 Do not let CI rewrite `evals/history.mechanical.json`; CI compares only.
@@ -161,7 +179,7 @@ failures outrank qualitative issues.
 | Codex skill structure or content | `ywc-skill-author` |
 | Codex TOML agent definition | Codex custom-agent authoring conventions |
 | Bundle install/docs/plugin drift | `codex/AGENTS.md`, bundle README set, and packaging scripts |
-| Gate or scorer defect | This internal skill's `scripts/` and rubric references |
+| Gate or scorer defect | This local skill's `scripts/` and rubric references |
 
 After each improvement batch, rerun Step 1 and Step 2 for the affected scope.
 
@@ -198,7 +216,10 @@ Before claiming the evaluation is complete, verify:
 
 - [ ] `inventory_gate.py` was run for the stated scope.
 - [ ] `score.py --mode mechanical --format markdown` was run for mechanical evidence unless skill-level `--mode judge` was explicit.
-- [ ] Expected negative checks, such as missing `--item` and stale wording searches, were run as assertion-shaped commands (`! <command>` or equivalent).
+- [ ] Expected negative checks were run as assertion-shaped commands:
+  - `! test -e codex/skills/ywc-codex-toolkit-eval`
+  - `! test -e .codex-plugin/skills/ywc-codex-toolkit-eval`
+  - `! rg 'tools/codex-internal/skills/ywc-codex-toolkit-[e]val' .codex/skills/ywc-codex-toolkit-eval scripts/validate.sh`
 - [ ] Every scored skill used [references/skill-rubric.md](references/skill-rubric.md).
 - [ ] Every scored agent used [references/agent-rubric.md](references/agent-rubric.md).
 - [ ] Mechanical-only mode is reported as partial, not final quality.
@@ -210,11 +231,11 @@ Before claiming the evaluation is complete, verify:
 
 - **Evaluating Claude Code artifacts with this skill** — use `.claude/skills/ywc-toolkit-eval` for Claude Code.
 - **Treating mechanical points as a final grade** — judgment axes must be scored before claiming a composite grade.
-- **Letting internal files leak into packaging** — keep the skill under `tools/codex-internal/skills/`.
+- **Letting local evaluator files leak into packaging** — keep the skill under `.codex/skills/`.
 - **Skipping the backlog** — the prioritized fix list is the deliverable that makes the cycle actionable.
 
 ## Integration
 
 - **Upstream**: `ywc-skill-author` for Codex skill rule interpretation.
 - **Downstream**: use the prioritized backlog to make targeted Codex skill/agent edits, then re-run this skill.
-- **Pairs with**: `scripts/validate.sh`, which enforces the internal-only packaging boundary and runs the mechanical regression gate.
+- **Pairs with**: `scripts/validate.sh`, which enforces the local-only packaging boundary and runs the mechanical regression gate.
